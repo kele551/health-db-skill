@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "note": "每个数据点一条定义。加一个新指标＝这里加一行、跑一次 指标字典导入.py，生成器/摘要/导出全部自动认得，不用改代码。kind: lab化验 / vital自测 / body体格 / section段落触发。",
+  "items": [
+    {"code": "CREA", "name": "肌酐", "kind": "lab", "unit": "µmol/L", "ref": "44-106", "labset": "renal,dm,general", "category": "肾功", "abbr": "CREA", "section": "lab", "words": "肌酐,creatinine", "fhir": "2160-0", "gloss": "肌酐（肾功能的直接指标）", "sort": 1},
+    {"code": "UALB", "name": "尿微量白蛋白", "kind": "lab", "unit": "mg/L", "ref": "0-30", "labset": "renal,dm", "category": "尿检", "abbr": "UALB", "section": "lab", "words": "尿蛋白,尿微量,白蛋白", "fhir": "14959-1", "gloss": "尿微量白蛋白（肾受损最早出现的信号）", "sort": 2},
+    {"code": "UCr", "name": "尿肌酐", "kind": "lab", "unit": "µmol/L", "ref": "", "labset": "dm,renal", "category": "尿检", "abbr": "UCr", "section": "lab", "words": "尿肌酐", "fhir": "2162-6", "gloss": "尿肌酐（和白蛋白一起算比值）", "sort": 3},
+    {"code": "UA", "name": "尿酸", "kind": "lab", "unit": "µmol/L", "ref": "208-428", "labset": "renal,general", "category": "肾功", "abbr": "UA", "section": "lab", "words": "尿酸", "fhir": "3084-1", "gloss": "尿酸（高了会伤肾、诱发痛风）", "sort": 4},
+    {"code": "UREA", "name": "尿素", "kind": "lab", "unit": "mmol/L", "ref": "2.9-8.2", "labset": "renal,general", "category": "肾功", "abbr": "UREA", "section": "lab", "words": "尿素", "fhir": "3094-0", "gloss": "尿素（受吃饭喝水影响大，单看不准）", "sort": 5},
+    {"code": "TSH", "name": "TSH", "kind": "lab", "unit": "mIU/L", "ref": "0.27-4.2", "labset": "thy,general", "category": "甲功", "abbr": "TSH", "section": "thy", "words": "tsh,甲功,促甲状腺,优甲乐", "fhir": "3016-3", "gloss": "促甲状腺激素 TSH（调优甲乐看这一项）", "sort": 6},
+    {"code": "FT4", "name": "FT4", "kind": "lab", "unit": "pmol/L", "ref": "12-22", "labset": "thy,general", "category": "甲功", "abbr": "FT4", "section": "thy", "words": "ft4,游离甲状腺素", "fhir": "3024-7", "gloss": "游离甲状腺素 FT4（甲状腺实际产出）", "sort": 7},
+    {"code": "Tg", "name": "甲状腺球蛋白", "kind": "lab", "unit": "µg/L", "ref": "", "labset": "thy", "category": "甲功", "abbr": "Tg", "section": "thy", "words": "甲状腺球蛋白,tg", "fhir": "3013-0", "gloss": "甲状腺球蛋白 Tg（全切后看有没有复发）", "sort": 8},
+    {"code": "A1C", "name": "糖化血红蛋白", "kind": "lab", "unit": "%", "ref": "4-6", "labset": "dm,general", "category": "血糖", "abbr": "HbA1c", "section": "glu", "words": "糖化,hba1c", "fhir": "4548-4", "gloss": "糖化血红蛋白（近三个月的平均血糖）", "sort": 9},
+    {"code": "FGLU", "name": "空腹葡萄糖", "kind": "lab", "unit": "mmol/L", "ref": "3.9-6.1", "labset": "dm", "category": "血糖", "abbr": "GLU", "section": "glu", "words": "抽血血糖,空腹葡萄糖", "fhir": "1558-6", "gloss": "抽血查的空腹血糖（和手指自测不是一回事）", "sort": 10},
+    {"code": "CPEP", "name": "C 肽", "kind": "lab", "unit": "ng/mL", "ref": "", "labset": "dm", "category": "血糖", "abbr": "C-P", "section": "glu", "words": "c肽,c-p", "fhir": "4507-7", "gloss": "C 肽（看胰岛自己还剩多少产能）", "sort": 11},
+    {"code": "LDL", "name": "LDL-C", "kind": "lab", "unit": "mmol/L", "ref": "0-3.4", "labset": "lipid,dm,general,card", "category": "血脂", "abbr": "LDL-C", "section": "lipid", "words": "低密度,ldl", "fhir": "13457-7", "gloss": "低密度脂蛋白 LDL-C（血管里的“坏胆固醇”）", "sort": 12},
+    {"code": "TG", "name": "甘油三酯", "kind": "lab", "unit": "mmol/L", "ref": "0-1.7", "labset": "lipid,general,card", "category": "血脂", "abbr": "TG", "section": "lipid", "words": "甘油三酯", "fhir": "2571-8", "gloss": "甘油三酯（吃油多、喝酒会高）", "sort": 13},
+    {"code": "CHOL", "name": "总胆固醇", "kind": "lab", "unit": "mmol/L", "ref": "0-5.2", "labset": "lipid,card", "category": "血脂", "abbr": "CHOL", "section": "lipid", "words": "胆固醇", "fhir": "2093-3", "gloss": "总胆固醇（血脂的总量）", "sort": 14},
+    {"code": "HDL", "name": "高密度脂蛋白", "kind": "lab", "unit": "mmol/L", "ref": "1.0-1.6", "labset": "lipid,dm", "category": "血脂", "abbr": "HDL-C", "section": "lipid", "words": "高密度,hdl", "fhir": "2085-9", "gloss": "高密度脂蛋白 HDL-C（“好胆固醇”，偏高点好）", "sort": 15},
+    {"code": "HCY", "name": "同型半胱氨酸", "kind": "lab", "unit": "µmol/L", "ref": "0-15", "labset": "lipid,dm", "category": "血脂", "abbr": "HCY", "section": "lipid", "words": "同型半胱氨酸,hcy", "fhir": "13965-9", "gloss": "同型半胱氨酸（偏高时脑卒中风险高）", "sort": 16},
+    {"code": "ALT", "name": "ALT", "kind": "lab", "unit": "U/L", "ref": "0-40", "labset": "liver,general", "category": "肝功", "abbr": "ALT", "section": "lab", "words": "转氨酶,谷丙,肝功", "fhir": "1742-6", "gloss": "丙氨酸氨基转移酶 ALT（看肝有没有受损）", "sort": 17},
+    {"code": "AST", "name": "AST", "kind": "lab", "unit": "U/L", "ref": "0-40", "labset": "liver", "category": "肝功", "abbr": "AST", "section": "lab", "words": "谷草,ast", "fhir": "1920-8", "gloss": "天冬氨酸氨基转移酶 AST（肝、肌肉都会影它）", "sort": 18},
+    {"code": "HCT", "name": "红细胞压积", "kind": "lab", "unit": "%", "ref": "40-50", "labset": "general", "category": "血常规", "abbr": "HCT", "section": "lab", "words": "红细胞压积,hct", "fhir": "4544-3", "gloss": "红细胞压积（血稠不稠、有没有贫血）", "sort": 19},
+    {"code": "BP", "name": "血压", "kind": "vital", "unit": "mmHg", "ref": "目标 <130/80", "labset": "", "category": "", "abbr": "", "section": "bp", "words": "血压,收缩压,舒张压", "fhir": "85354-9", "gloss": "血压（单肾 + 糖尿病，目标 <130/80）", "sort": 20},
+    {"code": "GLU", "name": "血糖", "kind": "vital", "unit": "mmol/L", "ref": "空腹 4.4-7.0 / 餐后 <10", "labset": "", "category": "", "abbr": "", "section": "glu", "words": "血糖,餐后,空腹,低血糖", "fhir": "2339-0", "gloss": "手指自测血糖（空腹 4.4–7.0，餐后 <10）", "sort": 21},
+    {"code": "WT", "name": "体重", "kind": "body", "unit": "kg", "ref": "BMI", "labset": "", "category": "", "abbr": "", "section": "weight", "words": "体重,减重,bmi", "fhir": "29463-7", "gloss": "体重（近三个月变化超 5% 要问原因）", "sort": 22},
+    {"code": "PATHO", "name": "病理", "kind": "section", "unit": "", "ref": "", "labset": "", "category": "", "abbr": "", "section": "patho", "words": "病理,切片,免疫组化", "fhir": "DiagnosticReport", "gloss": "", "sort": 30},
+    {"code": "SURG", "name": "手术", "kind": "section", "unit": "", "ref": "", "labset": "", "category": "", "abbr": "", "section": "surgery", "words": "手术,切除,术后", "fhir": "Procedure", "gloss": "", "sort": 31}
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "note": "本库 → FHIR 六类资源的映射。默认输出 R4(4.0.1)，--version r5 可切 R5(5.0.0)。六类固定，新增数据源先归类再导，导出器不认表名、只认这六类。",
+  "default_version": "r4",
+  "versions": {"r4": "4.0.1", "r5": "5.0.0"},
+  "patient": {
+    "from": "profile",
+    "fields": {"name": "name", "gender": "sex", "birthDate": "birth"},
+    "note": "gender 男/女 → male/female；一人一库，一份 .db 只出一个 Patient"
+  },
+  "resources": {
+    "Condition": {
+      "from": "condition",
+      "fields": {"code.text": "name", "onsetDateTime": "date", "note.text": "note", "category": "tag"},
+      "why": "在管诊断（高血压、糖尿病、肿瘤等）"
+    },
+    "MedicationStatement": {
+      "from": "medication",
+      "fields": {"status": "status", "medicationCodeableConcept.text": "name", "dosage.text": "time+dose", "reasonCode.text": "why"},
+      "why": "长期在吃的西药；中药汤剂暂不进 MedicationStatement（按需另出 DocumentReference）"
+    },
+    "Observation": {
+      "from": ["lab", "bp_glu", "weight", "ext_metric"],
+      "code_from": "metric_dict.fhir",
+      "why": "所有数值型数据；code 优先取指标字典里登记的 LOINC，没有就写 code.text",
+      "special": {
+        "bp": {"panel": "85354-9", "components": {"8480-6": "收缩压", "8462-4": "舒张压", "8867-4": "心率"}},
+        "glu": {"code": "2339-0", "note": "血糖时点写进 note"},
+        "weight": {"code": "29463-7"}
+      }
+    },
+    "DiagnosticReport": {
+      "from": "lab",
+      "group_by": ["date", "source_file"],
+      "fields": {"effectiveDateTime": "date", "identifier": "source_file", "result": "Observation 引用", "category": "lab"},
+      "why": "一张化验单＝一份报告，把当天那批 Observation 挂进去"
+    },
+    "Encounter": {
+      "from": "visit",
+      "fields": {"period.start": "date", "type.text": "kind", "reasonCode.text": "title", "participant.individual.display": "doctor", "serviceProvider.display": "hospital"},
+      "why": "门诊、住院、手术、转诊都算一次就诊"
+    },
+    "CarePlan": {
+      "from": ["care_plan", "profile.targets"],
+      "fields": {"activity.detail.description": "item", "activity.detail.scheduledPeriod": "due_date→window_end", "status": "待确认→planned / 已定→active / 已完成→completed", "note.text": "依据 + 备注 + 状态说明", "activity.detail.performer.display": "dept+doctor"},
+      "why": "下次复查计划（查什么、最早哪天、找谁、依据）；care_plan 表为空且无 targets 时整类不输出"
+    }
+  },
+  "not_exported": {
+    "tcm_prescription": "中药方暂不外发（含饮片明细与费用）",
+    "tcm_fee/doc": "费用与单据涉及隐私与金额，不进 FHIR",
+    "mood_score/symptom": "主观描述先不动，等接口需要再映射为 Observation(问卷类)",
+    "imaging/pathology": "先按 DocumentReference 预留，未实现"
+  }
+}

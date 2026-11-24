@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="text-scale" content="scale">
+<meta name="description" content="示例用户的个人健康总览：病历、体征、化验、时间线，医疗记录与设备监测分开看。">
+<meta property="og:title" content="健康总览 · 医疗版">
+<meta property="og:description" content="病历、体征、化验、时间线一页看完，数据来自本机数据库。">
+<meta property="og:type" content="profile">
+<title>健康总览 · 医疗版</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--line:#e4e8ec;--ink:#1c2329;--mute:#6b7480;--soft:#6b7480;
+ --ok:#2e7d5b;--okbg:#e9f4ee;--high:#b4531f;--highbg:#fbeee7;--low:#2f6ea8;--lowbg:#e9f1f9;
+ --na:#6b7480;--na-bg:#eef1f4;--accent:#1f5c50}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:.875rem;line-height:1.5;
+ font-family:"Noto Sans SC","Noto Sans CJK SC",Manrope,Geist,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+ -webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:24px 16px 80px}
+h1{font-size:1.5rem;margin:0;font-weight:600;letter-spacing:-.4px}
+h1 small{font-size:.75rem;color:var(--mute);font-weight:400;margin-left:12px;letter-spacing:0}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.meta{color:var(--mute);font-size:.75rem;text-align:right;line-height:1.5}
+nav{position:sticky;top:0;z-index:9;display:flex;gap:8px;flex-wrap:wrap;
+ padding:12px 0;margin:16px 0 4px;background:var(--bg);
+ backdrop-filter:blur(8px)}
+nav a{font-size:.75rem;color:var(--mute);text-decoration:none;padding:8px 12px;border-radius:999px;
+ border:1px solid var(--line);background:#fff;transition:color .3s cubic-bezier(.22,1,.36,1),border-color .3s cubic-bezier(.22,1,.36,1)}
+nav a:hover{color:var(--ink);border-color:#cfd6dd}
+section{margin-top:24px}
+h2{font-size:1rem;font-weight:600;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+h2 .n{font-size:.75rem;font-weight:600;color:#fff;background:var(--accent);border-radius:8px;padding:2px 8px}
+h2 .h{font-size:.75rem;color:var(--mute);font-weight:400}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+.cols{display:grid;grid-template-columns:1.05fr 1fr;gap:16px;align-items:start}
+@media(max-width:820px){.cols{grid-template-columns:1fr}}
+.pat{padding:16px}
+.pat .name{font-size:1.25rem;font-weight:600}
+.pat .sub{color:var(--mute);font-size:.75rem;margin:2px 0 12px}
+.cond{display:flex;gap:8px;font-size:.75rem;padding:8px 0;border-top:1px solid #f0f2f5;align-items:baseline}
+.cond b{font-weight:600}
+.cond .tag{flex:0 0 auto;font-size:.75rem;padding:2px 8px;border-radius:4px;background:var(--na-bg);color:var(--mute)}
+.meds{font-size:.75rem;color:var(--mute);margin-top:12px;line-height:1.5}
+.alert{padding:8px 16px;border-bottom:1px solid #f0f2f5;display:grid;
+ grid-template-columns:8px 1fr auto;gap:12px;align-items:start}
+.alert:last-child{border-bottom:0}
+.dot{width:8px;height:8px;border-radius:50%;margin-top:8px}
+.dot.high{background:var(--high)}.dot.low{background:var(--low)}.dot.ok{background:var(--ok)}.dot.na{background:#c3c9d2}
+.alert .t{font-size:.75rem}
+.alert .t b{font-weight:600}
+.alert .w{color:var(--mute);font-size:.75rem;margin-top:2px}
+.alert .v{font-size:.875rem;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px;align-items:start}
+.qcard{padding:16px}
+.qcard h3{margin:0 0 8px;font-size:.75rem;font-weight:600;color:#39424c}
+.qrow{display:grid;grid-template-columns:1fr auto auto;gap:8px;font-size:.75rem;
+ padding:4px 0;border-top:1px solid #f2f4f6;align-items:center}
+.qrow:first-of-type{border-top:0}
+.qrow .k{color:#48525d}
+.qrow .v{font-variant-numeric:tabular-nums;font-weight:600}
+.qrow .s{width:7px;height:7px;border-radius:50%}
+.grp{margin-top:16px;overflow:hidden}
+.grp .hd{padding:16px;border-bottom:1px solid #eef1f4;display:flex;justify-content:space-between;
+ align-items:baseline;gap:12px}
+.grp .hd b{font-size:.875rem}
+.grp .hd span{font-size:.75rem;color:var(--mute)}
+.row{display:grid;grid-template-columns:minmax(170px,1.3fr) 96px 132px minmax(132px,1.15fr) 64px 84px;
+ gap:12px;padding:8px 16px;border-bottom:1px solid #f3f5f7;align-items:center;cursor:pointer}
+.row:last-child{border-bottom:0}
+.row:hover{background:#fbfcfd}
+.row .nm{font-size:.75rem}
+.row .nm i{display:block;font-style:normal;font-size:.75rem;color:var(--soft);letter-spacing:.2px}
+.row .val{font-size:1rem;font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.row .val small{font-size:.75rem;font-weight:400;color:var(--mute);margin-left:2px}
+.row .ref{font-size:.75rem;color:var(--soft);text-align:right;line-height:1.33}
+.badge{font-size:.75rem;padding:2px 8px;border-radius:999px;text-align:center;white-space:nowrap}
+.badge.ok{background:var(--okbg);color:var(--ok)}
+.badge.high{background:var(--highbg);color:var(--high)}
+.badge.low{background:var(--lowbg);color:var(--low)}
+.badge.na{background:var(--na-bg);color:var(--na)}
+.det{display:none;padding:4px 16px 16px;background:#fbfcfd;border-bottom:1px solid #f3f5f7}
+.det.on{display:block}
+.det .bar2{font-size:.75rem;color:var(--mute);margin:8px 0 12px;padding-left:8px;border-left:2px solid #dfe5ea}
+.det table{width:100%;border-collapse:collapse;font-size:.75rem}
+.det th{text-align:left;color:var(--mute);font-weight:500;padding:4px 8px;border-bottom:1px solid #eef1f4}
+.det td{padding:4px 8px;border-bottom:1px solid #f4f6f8;font-variant-numeric:tabular-nums}
+.det .lv-h{color:var(--high)}.det .lv-l{color:var(--low)}
+@media(max-width:760px){
+ .row{grid-template-columns:1fr auto auto;grid-template-areas:"nm val badge" "sp1 sp1 sp2";column-gap:8px;row-gap:8px}
+ .row .nm{grid-area:nm}.row .val{grid-area:val}.row .badge{grid-area:badge;justify-self:end}
+ .row svg.bar{grid-area:sp1;justify-self:start}
+ .row svg.spk{grid-area:sp2;justify-self:end}
+ .row .ref,.row .dt{display:none}
+ .alert{grid-template-columns:8px 1fr}
+ .alert .v{grid-column:2;justify-self:start}
+}
+svg{display:block}
+svg.bar{width:132px;height:30px;max-width:100%}
+svg.spk{width:74px;height:30px;max-width:100%}
+.lab .rp{padding:0;border-bottom:1px solid #f0f2f5}
+.lab .rp summary{list-style:none;cursor:pointer;padding:12px 16px;display:grid;
+ grid-template-columns:100px 1fr auto;gap:12px;align-items:center;font-size:.75rem}
+.lab .rp summary::-webkit-details-marker{display:none}
+.lab .rp summary .d{font-variant-numeric:tabular-nums;color:#3a444e}
+.lab .rp summary .s{color:var(--mute);font-size:.75rem}
+.lab .rp summary .x{font-size:.75rem;color:var(--high);white-space:nowrap}
+.lab table{width:100%;border-collapse:collapse;font-size:.75rem;margin:0 0 8px}
+.lab th{text-align:left;color:var(--mute);font-weight:500;padding:4px 8px;border-bottom:1px solid #eef1f4;background:#fafbfc}
+.lab td{padding:4px 8px;border-bottom:1px solid #f4f6f8}
+.lab td.n{text-align:right;font-variant-numeric:tabular-nums}
+.lab .pad{padding:0 8px 12px}
+.tl{list-style:none;margin:0;padding:4px 0 8px}
+.tl li{display:grid;grid-template-columns:86px 62px 1fr;gap:12px;padding:8px 16px;border-bottom:1px solid #f3f5f7;font-size:.75rem;align-items:baseline}
+.tl li:last-child{border-bottom:0}
+.tl .d{color:var(--mute);font-size:.75rem;font-variant-numeric:tabular-nums}
+.tl .ty{font-size:.75rem;padding:2px 8px;border-radius:4px;background:var(--na-bg);color:var(--mute);text-align:center}
+details.raw{margin-top:8px}
+details.raw summary{cursor:pointer;padding:12px 16px;font-size:.75rem;color:var(--accent)}
+.raw .in{padding:0 16px 16px}
+.raw input{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:.75rem;margin:8px 0 12px}
+.raw input:focus{border-color:var(--accent)}
+.raw .sc{max-height:52vh;overflow:auto;border:1px solid #eef1f4;border-radius:8px}
+.raw table{width:100%;border-collapse:collapse;font-size:.75rem}
+.raw th{position:sticky;top:0;background:#fafbfc;text-align:left;color:var(--mute);font-weight:500;padding:8px;border-bottom:1px solid #eef1f4;font-size:.75rem}
+.raw td{padding:8px;border-bottom:1px solid #f4f6f8}
+.raw td.n{text-align:right;font-variant-numeric:tabular-nums}
+.foot{color:var(--soft);font-size:.75rem;margin-top:24px;line-height:1.5}
+.foot b{color:var(--mute);font-weight:600}
+.targets{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px;margin-top:12px}
+.tg{padding:12px;border:1px solid #eef1f4;border-radius:8px;font-size:.75rem}
+.tg b{display:block;font-size:.75rem;color:#39424c;margin-bottom:2px}
+.tg span{color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums}
+.srcbar{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0 0}
+@media(max-width:760px){.srcbar{grid-template-columns:1fr}}
+.srcbar div{background:#fff;border:1px solid var(--line);border-radius:8px;padding:12px 16px;
+ font-size:.75rem;color:var(--mute);line-height:1.5}
+.srcbar b{color:var(--ink);font-size:.75rem;display:block;margin-bottom:2px}
+.sec-t{display:flex;align-items:baseline;gap:8px;margin:24px 0 8px;flex-wrap:wrap}
+.sec-t h3{margin:0;font-size:.875rem;font-weight:600}
+.sec-t span{font-size:.75rem;color:var(--mute)}
+.hd2{padding:12px 16px;border-bottom:1px solid #eef1f4;font-size:.75rem;font-weight:600;color:#39424c}
+.hitem{padding:12px 16px;border-bottom:1px solid #f3f5f7;font-size:.75rem;
+ display:grid;grid-template-columns:88px 1fr;gap:12px}
+.hitem:last-child{border-bottom:0}
+.hitem .d{color:var(--mute);font-variant-numeric:tabular-nums;font-size:.75rem}
+.hitem .n{color:var(--mute);font-size:.75rem;margin-top:2px;line-height:1.5}
+.pill{display:inline-block;font-size:.75rem;padding:2px 8px;border-radius:4px;background:var(--na-bg);
+ color:var(--mute);margin-left:8px}
+.pill.med{background:#eef3f9;color:#2f6ea8}
+.pill.dev{background:#eef4f1;color:#2e7d5b}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible,.row:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{transition:background .3s cubic-bezier(.22,1,.36,1)}
+.skip{position:absolute;left:-9999px;top:0;z-index:20;padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;font-size:.75rem;text-decoration:none}
+.skip:focus{left:16px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+</style></head><body><a class="skip" href="#main">跳到主要内容</a><div class="wrap">
+<div class="top">
+  <div>
+    <h1>健康总览 <small>医疗版 · 按身体系统看</small></h1>
+    <p class="meta" id="head" style="margin:8px 0 0;text-align:left"></p>
+  </div>
+  <div class="meta" id="head2"></div>
+</div>
+
+<nav>
+  <a href="#s1">概览</a><a href="#s2">体征</a><a href="#s2b">病历</a><a href="#s3">化验</a><a href="#s4">时间线</a><a href="#s5">原始数据</a>
+</nav>
+
+<main id="main">
+<div class="srcbar">
+  <div><b>医疗记录 · 这样来的</b>每次测的血压血糖、医院化验单、开药与结算、住院手术 —— 手工录入或单据识别入库，一条一条对得上单子。</div>
+  <div><b>设备数据 · 这样来的</b>华为手表与手机自动同步：睡眠、静息心率、血氧、压力、步数 —— 导出包全量入库，只作趋势参考，不当诊断依据。</div>
+</div>
+
+<section id="s1">
+  <h2>概览 <span class="h">先看这一屏：谁、有哪些在管病、哪几项要跟医生说</span></h2>
+  <div class="cols" style="margin-top:12px">
+    <div class="card pat" id="pat"></div>
+    <div class="card" id="alerts"></div>
+  </div>
+  <div class="quick" id="quick"></div>
+</section>
+
+<section id="s2b">
+  <h2>病历 <span class="h">住院与手术按日期倒排；复查提醒来自档案卡</span></h2>
+  <div class="cols" style="margin-top:12px">
+    <div class="card"><div class="hd2">住院与手术</div><div id="hosp"></div></div>
+    <div class="card"><div class="hd2">复查提醒</div><div id="rem"></div></div>
+  </div>
+  <div class="card" style="margin-top:12px"><div class="hd2">影像与病理结论（只抄原文结论）</div><div id="img"></div></div>
+</section>
+
+<section id="s2">
+  <h2>体征 <span class="h">按系统分组；每行左边是值，中间那条是参考区间，指针落在哪就是哪</span></h2>
+  <div id="vitals"></div>
+</section>
+
+<section id="s3">
+  <h2>化验 <span class="h">一次报告一行，点开看该次全部项目</span></h2>
+  <div class="card lab" id="lab"></div>
+</section>
+
+<section id="s4">
+  <h2>时间线 <span class="h">血压血糖、体重、化验、中药方、就诊混排</span></h2>
+  <div class="card"><ul class="tl" id="tl"></ul></div>
+</section>
+
+<section id="s5">
+  <h2>原始数据 <span class="h">全量入库核对：56 类 / 442 项，一条没丢</span></h2>
+  <div class="card"><details class="raw"><summary id="rawsum">展开看导出分类与指标清单</summary>
+    <div class="in">
+      <input id="q" placeholder="搜类型或指标，例如 睡眠、血氧、stress">
+      <div class="sc"><table><thead><tr><th>类型 / 指标</th><th>所属</th><th class="n">行数</th><th>覆盖</th></tr></thead><tbody id="raw"></tbody></table></div>
+    </div></details></div>
+</section>
+
+</main>
+<p class="foot" id="foot"></p>
+</div>
+<script>
+const D = __DATA__;
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = n => (n==null||isNaN(n)) ? '—' : Number(n).toLocaleString('zh-CN',{maximumFractionDigits:1});
+const LV = {ok:'正常', high:'偏高', low:'偏低', na:'—'};
+
+/* ---------- 头 ---------- */
+const P = D.profile, M = D.meta;
+$('#head').innerHTML = [P.name, P.age!=null?P.age+' 岁':'', P.sex==='male'?'男':(P.sex==='female'?'女':'')]
+  .filter(Boolean).join(' · ') + `　在管 ${P.conditions.length} 项 · 长期用药 ${P.meds.length} 种`;
+const labN = D.labs.length, lastLab = D.labs.length? D.labs[D.labs.length-1] : null;
+$('#head2').innerHTML = `数据 ${M.from} ~ ${M.to}　库 ${M.db_mb} MB<br>
+  明细 ${fmt(M.rows)} 条 / ${M.types} 类 / ${M.metrics} 项<br>
+  化验 ${labN} 次 · 最近 ${lastLab?lastLab.d+'（'+lastLab.n+' 项）':'—'}　生成 ${D.generated}`;
+
+/* ---------- 患者卡 ---------- */
+$('#pat').innerHTML = `<div class="name">${esc(P.name)}</div>
+  <div class="sub">${P.age!=null?P.age+' 岁':'年龄未知'}　${P.birth?('生日 '+P.birth):''}　按年龄档：${esc(D.band||'')}</div>` +
+  P.conditions.map(c=>`<div class="cond"><span class="tag">${esc(c.tag||'')}</span>
+    <div><b>${esc(c.name)}</b><div style="color:#6b7480;font-size:.75rem">${esc(c.note||'')}</div></div></div>`).join('') +
+  `<div class="meds"><b style="color:#39424c">长期用药</b><br>` +
+  P.meds.map(m=>`${esc(m.time)}　<b style="color:#1c2329;font-weight:600">${esc(m.name)}</b> ${esc(m.dose)}`).join('<br>') + `</div>`;
+
+/* ---------- 需要留意 ---------- */
+const AL = D.alerts;
+$('#alerts').innerHTML = `<div class="hd" style="padding:16px;border-bottom:1px solid #eef1f4;display:flex;justify-content:space-between">
+   <b style="font-size:.875rem">需要跟医生说的</b><span style="font-size:.75rem;color:#b4531f">${AL.length} 项</span></div>` +
+  (AL.length ? AL.map(a=>`<div class="alert"><span class="dot ${a.lv}"></span>
+    <div class="t"><b>${esc(a.n)}</b><span class="pill ${a.grp==='睡眠与呼吸'||a.grp==='活动量'||a.grp==='心率与恢复'?'dev':'med'}">${esc(a.grp)}</span>　<span style="color:#6b7480;font-size:.75rem">${esc(a.ref)}</span>
+      ${a.why?`<div class="w">${esc(a.why)}</div>`:''}</div>
+    <div class="v" style="color:${a.lv==='high'?'#b4531f':'#2f6ea8'}">${esc(a.v)}<span style="font-size:.75rem;font-weight:400;color:#6b7480"> ${esc(a.u)}</span></div>
+  </div>`).join('') : `<div style="padding:24px;text-align:center;color:#2e7d5b;font-size:.75rem">全部落在参考区间内</div>`);
+
+/* ---------- 指标速览 ---------- */
+$('#quick').innerHTML = D.systems.map(g=>{
+  const rows = g.rows.slice(0, g.top||4);
+  return `<div class="card qcard"><h3>${esc(g.t)}<span class="pill ${g.src==='设备'?'dev':'med'}">${g.src||'医疗'}</span></h3>` + rows.map(r=>`<div class="qrow">
+    <span class="k">${esc(r.n.replace(/（.*?）/g,''))}</span>
+    <span class="v">${esc(r.v)}${r.u?`<span style="font-weight:400;color:#6b7480;font-size:.75rem"> ${esc(r.u)}</span>`:''}</span>
+    <span class="s" style="background:${r.lv==='ok'?'#2e7d5b':r.lv==='high'?'#b4531f':r.lv==='low'?'#2f6ea8':'#c3c9d2'}"></span>
+  </div>`).join('') + `</div>`;
+}).join('');
+
+/* ---------- 参考区间条 ---------- */
+function barSvg(r){
+  const W=132, H=30, x0=0, x1=W-2, yBar=8, hBar=7;
+  let lo=r.lo, hi=r.hi, v=Number(r.s);
+  if (isNaN(v)) return `<svg class="bar" viewBox="0 0 ${W} ${H}"></svg>`;
+  let d0, d1;
+  if (lo!=null && hi!=null){ const pad=Math.max((hi-lo)*0.5, hi*0.05); d0=lo-pad; d1=hi+pad; }
+  else if (hi!=null){ d0=0; d1=hi*1.45; }
+  else if (lo!=null){ d0=lo*0.45; d1=lo*1.55; }
+  else { return `<svg class="bar" viewBox="0 0 ${W} ${H}"></svg>`; }
+  if (d1<=d0){ d1=d0+1; }
+  const X = t => x0 + (x1-x0) * Math.max(0, Math.min(1, (t-d0)/(d1-d0)));
+  const seg = (a,b,c)=> b<=a ? '' : `<rect x="${X(a).toFixed(1)}" y="${yBar}" width="${Math.max(1,(X(b)-X(a))).toFixed(1)}" height="${hBar}" fill="${c}" rx="2"/>`;
+  const px = X(v);
+  const pcol = r.lv==='high'?'#b4531f':r.lv==='low'?'#2f6ea8':'#2e7d5b';
+  return `<svg class="bar" viewBox="0 0 ${W} ${H}">
+    ${lo!=null?seg(d0,lo,'#e7eff8'):''}${lo!=null&&hi!=null?seg(lo,hi,'#e3f2e9'):''}
+    ${hi!=null?seg(hi,d1,'#f9e7dd'):''}
+    ${lo==null&&hi!=null?seg(d0,hi,'#e3f2e9'):''}
+    <line x1="${px.toFixed(1)}" x2="${px.toFixed(1)}" y1="${yBar-3}" y2="${yBar+hBar+3}" stroke="${pcol}" stroke-width="2"/>
+    <circle cx="${px.toFixed(1)}" cy="${yBar+hBar+3}" r="2.6" fill="${pcol}"/>
+    <text x="0" y="${H-1}" font-size="8.5" fill="#6b7480">${lo!=null?fmt(lo):''}</text>
+    <text x="${x1}" y="${H-1}" font-size="8.5" fill="#6b7480" text-anchor="end">${hi!=null?fmt(hi):''}</text>
+  </svg>`;
+}
+
+/* ---------- 迷你趋势 ---------- */
+function spark(r){
+  const se = r.se||[], v = Number(r.s);
+  if (se.length<2) return `<svg class="spk" viewBox="0 0 74 30"></svg>`;
+  const W=74,H=30,pl=3,pr=3,pt=4,pb=12;
+  const vs = se.map(p=>p.v).filter(x=>x!=null);
+  let lo=Math.min(...vs), hi=Math.max(...vs);
+  if (hi-lo < 1e-9){ hi=lo+1; }
+  const X=i=>pl+i*(W-pl-pr)/Math.max(1,se.length-1);
+  const Y=t=>pt+(H-pt-pb)*(1-(t-lo)/(hi-lo));
+  const d = se.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p.v).toFixed(1)}`).join(' ');
+  const col = r.lv==='high'?'#b4531f':r.lv==='low'?'#2f6ea8':'#5d7d72';
+  return `<svg class="spk" viewBox="0 0 ${W} ${H}">
+    <path d="${d}" fill="none" stroke="${col}" stroke-width="1.4" stroke-opacity=".75"/>
+    <circle cx="${X(se.length-1).toFixed(1)}" cy="${Y(se[se.length-1].v).toFixed(1)}" r="2.2" fill="${col}"/>
+    <text x="0" y="${H-1}" font-size="8" fill="#6b7480">${esc(se[0].d.slice(5))}</text>
+    <text x="${W}" y="${H-1}" font-size="8" fill="#6b7480" text-anchor="end">${esc(se[se.length-1].d.slice(5))}</text>
+  </svg>`;
+}
+
+/* ---------- 体征 ---------- */
+function grpCard(g){
+  const gi = D.systems.indexOf(g);
+  const rows = g.rows.map((r,ri)=>{
+    const id = 'd'+gi+'_'+ri;
+    const detail = `<div class="det" id="${id}">
+      <div class="bar2">${esc(r.ref||'')}${r.why?'　·　'+esc(r.why):''}　·　最近 ${esc(r.d||'')}</div>
+      <table><thead><tr><th>日期</th><th class="n">数值</th><th class="n">参考</th></tr></thead><tbody>
+      ${(r.se||[]).slice().reverse().map(p=>`<tr><td>${esc(p.d)}</td><td class="n">${fmt(p.v)}</td><td class="n" style="color:#6b7480">${esc(r.ref||'')}</td></tr>`).join('')
+        || `<tr><td colspan="3" style="color:#6b7480">这类数据只有一次记录</td></tr>`}
+      </tbody></table></div>`;
+    return `<div class="row" role="button" tabindex="0" aria-expanded="false" onclick="this.setAttribute('aria-expanded',document.getElementById('${id}').classList.toggle('on'))" onkeydown="if(event.keyCode===13||event.keyCode===32){event.preventDefault();this.click()}">
+      <div class="nm">${esc(r.n)}<i>${r.k.startsWith('@') ? esc(r.u||'') : esc(r.k) + (r.u? ' · '+esc(r.u) : '')}</i></div>
+      <div class="val">${esc(r.v)}<small>${esc(r.u||'')}</small></div>
+      ${barSvg(r)}
+      <div class="ref">${esc(r.ref||'').slice(0,34)}</div>
+      <span class="badge ${r.lv}">${LV[r.lv]||'—'}</span>
+      ${spark(r)}
+    </div>${detail}`;
+  }).join('');
+  return `<div class="card grp"><div class="hd"><div><b>${esc(g.t)}</b><div style="font-size:.75rem;color:#6b7480">${esc(g.note)}</div></div>
+    <span>最近 ${esc(g.latest||'')}</span></div>${rows}</div>`;
+}
+const SRCT = {医疗:['医疗记录','自己测的、医院化验与开药 —— 每条能对到单子'],
+              设备:['设备监测','华为手表与手机同步 —— 只看趋势，不当诊断']};
+$('#vitals').innerHTML = ['医疗','设备'].map(s=>{
+  const gs = D.systems.filter(g=>(g.src||'医疗')===s);
+  if(!gs.length) return '';
+  return `<div class="sec-t"><h3>${SRCT[s][0]}</h3><span>${SRCT[s][1]}</span></div>` + gs.map(grpCard).join('');
+}).join('');
+
+/* ---------- 病历：住院手术 / 复查提醒 / 影像病理 ---------- */
+$('#hosp').innerHTML = (D.hosp||[]).map(h=>`<div class="hitem"><span class="d">${esc(h.d)}</span>
+  <div><b>${esc(h.name)}</b><span class="pill">${esc(h.tag||'')}</span>
+  ${h.note?`<div class="n">${esc(h.note)}</div>`:''}</div></div>`).join('')
+  || '<div style="padding:16px;color:#6b7480">没有住院记录</div>';
+$('#rem').innerHTML = (D.reminders||[]).map(r=>`<div class="hitem"><span class="d">下次 ${esc(r.next||'—')}</span>
+  <div><b>${esc(r.item)}</b><div class="n">上次 ${esc(r.last||'—')}　周期 ${esc(r.cycle||'—')}</div>
+  ${r.note?`<div class="n">${esc(r.note)}</div>`:''}</div></div>`).join('')
+  || '<div style="padding:16px;color:#6b7480">没有复查计划</div>';
+$('#img').innerHTML = (D.imaging||[]).map(x=>`<div class="hitem"><span class="d">${esc(x.date)}</span>
+  <div><b>${esc(x.item)}</b><div class="n">${esc(x.concl||'')}</div></div></div>`).join('') +
+  (D.pathology||[]).map(x=>`<div class="hitem"><span class="d">${esc(x.date)}</span>
+  <div><b>病理 ${esc(x.no||'')} · ${esc(x.site||'')}</b><div class="n">${esc(x.concl||'')}</div></div></div>`).join('');
+
+/* ---------- 化验 ---------- */
+$('#lab').innerHTML = D.labs.slice().reverse().map((L,ix)=>{
+  const bad = L.items.filter(i=>i.lv==='high'||i.lv==='low');
+  return `<details class="rp"><summary>
+    <span class="d">${esc(L.d)}</span>
+    <span class="s">${L.n} 项${bad.length?`　<span style="color:#b4531f">${bad.length} 项需留意</span>`:'　全部在区间'}</span>
+    <span class="x">${ix===0?'最近一次':''}</span></summary>
+    <div class="pad"><table><thead><tr><th>项目</th><th>结果</th><th class="n">参考区间</th><th class="n" style="text-align:center">判定</th></tr></thead><tbody>
+    ${L.items.map(i=>`<tr><td>${esc(i.item)}${i.abbr?`<span style="color:#6b7480;font-size:.75rem"> ${esc(i.abbr)}</span>`:''}</td>
+      <td class="${i.lv==='high'?'lv-h':i.lv==='low'?'lv-l':''}">${esc(i.res)}<span style="color:#6b7480;font-size:.75rem"> ${esc(i.unit)}</span></td>
+      <td class="n" style="color:#6b7480">${esc(i.ref)}</td>
+      <td style="text-align:center;color:${i.lv==='high'?'#b4531f':i.lv==='low'?'#2f6ea8':'#6b7480'}">${i.lv==='high'?'偏高':i.lv==='low'?'偏低':(i.lv==='ok'?'正常':'—')}</td></tr>`).join('')}
+    </tbody></table></div></details>`;
+}).join('') || '<div style="padding:16px;color:#6b7480">没有化验记录</div>';
+
+/* ---------- 时间线 ---------- */
+const ev = [];
+D.labs.forEach(L=>ev.push({d:L.d, ty:'化验', t:`${L.n} 项${L.items.filter(i=>i.lv==='high'||i.lv==='low').length?`，${L.items.filter(i=>i.lv==='high'||i.lv==='low').length} 项需留意`:''}`}));
+D.bp.forEach(x=>ev.push({d:x.d, ty:'血压', t:`${x.sbp}/${x.dbp} mmHg${x.hr?`　心率 ${x.hr}`:''}`}));
+D.glu.forEach(x=>ev.push({d:x.d, ty:'血糖', t:`${x.v} mmol/L　${x.tm||''}`}));
+D.weight.forEach(x=>ev.push({d:x.d, ty:'体重', t:`${x.w} kg${x.bmi?`　BMI ${fmt(x.bmi)}`:''}`}));
+D.tcm.forEach(x=>ev.push({d:x.d, ty:'中药方', t:`第 ${x.seq||'?'} 次 · ${x.herb} 味 · ${x.packs||'?'} 付${x.doctor?'　'+x.doctor:''}`}));
+(D.docs||[]).forEach(x=>ev.push({d:x.d, ty:'就诊', t:`${x.type||''} ${x.org||''} ${x.summary||''}`}));
+ev.sort((a,b)=> (b.d||'').localeCompare(a.d||''));
+$('#tl').innerHTML = ev.slice(0,70).map(e=>`<li><span class="d">${esc(e.d)}</span>
+  <span class="ty">${esc(e.ty)}</span><span>${esc(e.t)}</span></li>`).join('') ;
+
+/* ---------- 目标口径 ---------- */
+const tgt = D.targets.map(t=>`<div class="tg"><b>${esc(t.name)}</b><span>${esc(t.value)}</span></div>`).join('');
+
+/* ---------- 原始数据 ---------- */
+$('#rawsum').textContent = `展开看导出分类与指标清单（${D.types.length} 类 / ${D.metrics.length} 项）`;
+function drawRaw(kw=''){
+  const k = kw.trim().toLowerCase();
+  const ts = D.types.filter(t=>!k || t.name.toLowerCase().includes(k));
+  const ms = D.metrics.filter(m=>!k || m.m.toLowerCase().includes(k) || m.type.toLowerCase().includes(k));
+  const rows = ts.map(t=>`<tr><td><b>${esc(t.name)}</b><span style="color:#6b7480"> 分类</span></td><td style="color:#6b7480">—</td>
+    <td class="n">${fmt(t.rows)}</td><td style="color:#6b7480">${esc(t.from)} ~ ${esc(t.to)}</td></tr>`).join('') +
+    ms.slice(0,400).map(m=>`<tr><td>${esc(m.m)}</td><td style="color:#6b7480">${esc(m.type)}</td>
+    <td class="n">${fmt(m.rows)}</td><td style="color:#6b7480">最近 ${esc(m.last==null?'—':m.last)}　${esc((m.when||'').slice(0,10))}</td></tr>`).join('');
+  $('#raw').innerHTML = rows || '<tr><td colspan="4" style="padding:16px;color:#6b7480">没有匹配项</td></tr>';
+}
+drawRaw();
+$('#q').oninput = e => drawRaw(e.target.value);
+
+/* ---------- 脚注 ---------- */
+$('#foot').innerHTML = `<b>判定口径</b>：化验按报告单参考区间；糖化、LDL-C、TSH、BMI、血压、血糖按本人目标（来自 健康目标口径.py，按年龄档「${esc(D.band||'')}」）。`
+ + `<div style="margin-top:8px">${tgt}</div>`
+ + `<div style="margin-top:12px">体检结论属规则提示，不替代医生诊断；用药剂量只在医生处调整。数据源：本机健康数据库（华为运动健康导出包全量入库 ${fmt(M.rows)} 行）。</div>`;
+</script></body></html>

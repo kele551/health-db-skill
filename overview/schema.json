@@ -1,0 +1,190 @@
+{
+  "version": "1.0",
+  "note": "通用健康指标字典。别人要建自己的库：复制这份 schema，改 patient 与 indicators，再跑 健康数据库.py init 生成空表即可。LOINC 只填已确认的编码，不确定的留空并在 note 里写清。",
+  "patient": {
+    "name": "示例用户",
+    "id": "demo-user",
+    "birth_date": "",
+    "sex": "male"
+  },
+  "tables": {
+    "bp_glucose": {
+      "file": "血压血糖记录.csv",
+      "columns": [
+        "日期",
+        "时间",
+        "类别",
+        "收缩压(mmHg)",
+        "舒张压(mmHg)",
+        "心率(次/分)",
+        "血糖(mmol/L)",
+        "血糖时点",
+        "备注"
+      ]
+    },
+    "daily": {
+      "file": "日健康指标.csv",
+      "columns": [
+        "日期",
+        "步数",
+        "睡眠时长(分钟)",
+        "深睡(分钟)",
+        "静息心率(次/分)",
+        "平均心率(次/分)",
+        "数据来源",
+        "更新时间"
+      ]
+    },
+    "weight": {
+      "file": "体重记录.csv",
+      "columns": [
+        "日期",
+        "体重(kg)",
+        "BMI",
+        "体脂(%)",
+        "肌肉量(kg)",
+        "测量时间",
+        "备注"
+      ]
+    }
+  },
+  "indicators": [
+    {
+      "key": "systolic",
+      "name": "收缩压",
+      "unit": "mmHg",
+      "loinc": "8480-6",
+      "from": "bp_glucose",
+      "field": "收缩压(mmHg)",
+      "filter": {
+        "类别": "血压"
+      },
+      "normal": [
+        90,
+        140
+      ],
+      "warn": [
+        140,
+        160,
+        180
+      ],
+      "direction": "high_bad"
+    },
+    {
+      "key": "diastolic",
+      "name": "舒张压",
+      "unit": "mmHg",
+      "loinc": "8462-4",
+      "from": "bp_glucose",
+      "field": "舒张压(mmHg)",
+      "filter": {
+        "类别": "血压"
+      },
+      "normal": [
+        60,
+        90
+      ],
+      "warn": [
+        90,
+        100,
+        110
+      ],
+      "direction": "high_bad"
+    },
+    {
+      "key": "heart_rate",
+      "name": "心率",
+      "unit": "次/分",
+      "loinc": "8867-4",
+      "from": "bp_glucose",
+      "field": "心率(次/分)",
+      "filter": {
+        "类别": "血压"
+      },
+      "normal": [
+        60,
+        100
+      ],
+      "warn": [
+        100,
+        120,
+        140
+      ],
+      "direction": "high_bad"
+    },
+    {
+      "key": "glucose",
+      "name": "血糖",
+      "unit": "mmol/L",
+      "loinc": "2339-0",
+      "ucum": "mmol/L",
+      "from": "bp_glucose",
+      "field": "血糖(mmol/L)",
+      "filter": {
+        "类别": "血糖"
+      },
+      "normal": [
+        4.4,
+        10.0
+      ],
+      "low": 3.9,
+      "fasting_range": [
+        4.4,
+        7.0
+      ],
+      "direction": "range"
+    },
+    {
+      "key": "weight",
+      "name": "体重",
+      "unit": "kg",
+      "loinc": "29463-7",
+      "ucum": "kg",
+      "from": "weight",
+      "field": "体重(kg)",
+      "normal": [],
+      "direction": "trend"
+    },
+    {
+      "key": "steps",
+      "name": "步数",
+      "unit": "步",
+      "loinc": "41950-7",
+      "from": "daily",
+      "field": "步数",
+      "normal": [
+        6000,
+        999999
+      ],
+      "direction": "low_bad",
+      "note": "按天记录，非医嘱阈值，仅作活动量参考"
+    },
+    {
+      "key": "sleep",
+      "name": "睡眠时长",
+      "unit": "分钟",
+      "loinc": "",
+      "from": "daily",
+      "field": "睡眠时长(分钟)",
+      "normal": [
+        420,
+        540
+      ],
+      "direction": "range",
+      "note": "LOINC 未取到对应编码，导出 FHIR 时用本地 code"
+    },
+    {
+      "key": "resting_hr",
+      "name": "静息心率",
+      "unit": "次/分",
+      "loinc": "40443-4",
+      "from": "daily",
+      "field": "静息心率(次/分)",
+      "normal": [
+        50,
+        80
+      ],
+      "direction": "high_bad"
+    }
+  ]
+}

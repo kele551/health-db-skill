@@ -1,0 +1,16 @@
+# 个人数据：永不入库
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/*.html
+data/备份/
+demo/demo.db
+demo/演示看板.html
+demo/演示周报.html
+*.pyc
+__pycache__/
+.医疗看板缓存.json
+.总览缓存.json
+*.bak
+*.old

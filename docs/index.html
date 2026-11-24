@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>health-db · 个人健康数据库，数据留在自己电脑里</title>
+<meta name="description" content="health-db：把手机截图、化验单、处方收进一个属于自己的 SQLite 文件，生成离线健康看板与周报，导出 FHIR R4。全程本地运行，不上传任何数据。">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23111827'/><path d='M7 15h5l3-6 3 12 3-6h4' stroke='%23f9fafb' stroke-width='2.2' fill='none' stroke-linecap='round'/></svg>">
+<style>
+  :root{
+    --ink:#111827; --ink-2:#374151; --ink-3:#6b7280;
+    --bg:#ffffff; --bg-2:#f8f9fa; --line:#e5e7eb;
+    --ok:#15803d; --warn:#b45309; --accent:#1f2937;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Source Han Sans SC","Noto Sans SC",sans-serif;
+    font-size:16px; line-height:1.7; -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--ink); text-decoration:none}
+  a:hover{text-decoration:underline; text-underline-offset:3px}
+  .wrap{max-width:1080px; margin:0 auto; padding:0 24px}
+  header{border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); z-index:10}
+  .nav{display:flex; align-items:center; justify-content:space-between; height:64px}
+  .brand{display:flex; align-items:center; gap:10px; font-weight:700; font-size:15px; letter-spacing:.02em}
+  .mark{width:28px;height:28px;border-radius:7px;background:var(--ink);display:grid;place-items:center}
+  .mark svg{width:18px}
+  .nav-links{display:flex; gap:22px; font-size:14px; color:var(--ink-2)}
+  .hero{padding:72px 0 56px; background:var(--bg-2); border-bottom:1px solid var(--line)}
+  .hero h1{margin:0 0 14px; font-size:40px; line-height:1.25; letter-spacing:-.01em}
+  .hero p{margin:0; max-width:620px; color:var(--ink-2); font-size:17px}
+  .cta{display:flex; gap:12px; margin-top:26px; flex-wrap:wrap}
+  .btn{display:inline-flex; align-items:center; gap:8px; padding:11px 18px; border-radius:10px; font-size:14px; font-weight:600; transition:background .2s ease, border-color .2s ease}
+  .btn-dark{background:var(--ink); color:#fff}
+  .btn-dark:hover{background:#000; text-decoration:none}
+  .btn-line{border:1px solid var(--line); background:#fff}
+  .btn-line:hover{border-color:#d1d5db; text-decoration:none}
+  .meta{margin-top:16px; font-size:13px; color:var(--ink-3)}
+  section{padding:64px 0}
+  h2{font-size:24px; margin:0 0 8px; letter-spacing:-.01em}
+  .lead{color:var(--ink-3); margin:0 0 32px; font-size:14px}
+  .grid{display:grid; gap:16px}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .card{border:1px solid var(--line); border-radius:12px; padding:22px; background:#fff}
+  .card h3{margin:0 0 8px; font-size:15px; font-weight:650}
+  .card p{margin:0; font-size:14px; color:var(--ink-2)}
+  .num{display:inline-block; font-size:12px; color:var(--ink-3); margin-bottom:10px; letter-spacing:.08em}
+  .shot{display:block; width:100%; border:1px solid var(--line); border-radius:12px; background:#fff}
+  .shot-row{display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start}
+  .shot-cap{font-size:13px; color:var(--ink-3); margin-top:10px}
+  pre{background:#0f172a; color:#e5e7eb; border-radius:12px; padding:20px 22px; overflow:auto; font-size:13.5px; line-height:1.75; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Cascadia Mono",monospace}
+  .cmt{color:#94a3b8}
+  table{width:100%; border-collapse:collapse; font-size:14px}
+  th,td{text-align:left; padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:top}
+  th{color:var(--ink-3); font-weight:600; font-size:13px}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.92em; background:var(--bg-2); padding:2px 6px; border-radius:5px}
+  .tag{display:inline-block; font-size:12px; padding:3px 9px; border:1px solid var(--line); border-radius:999px; color:var(--ink-2); margin:0 6px 6px 0}
+  footer{border-top:1px solid var(--line); padding:36px 0; color:var(--ink-3); font-size:13px}
+  .foot{display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap}
+  @media (max-width:860px){
+    .hero{padding:52px 0 40px} .hero h1{font-size:31px}
+    .g3,.g2,.shot-row{grid-template-columns:1fr}
+    section{padding:48px 0}
+    .nav-links{gap:14px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <div class="brand">
+      <span class="mark"><svg viewBox="0 0 32 32"><path d="M5 15h6l3-7 4 14 3-7h6" stroke="#f9fafb" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg></span>
+      health-db
+    </div>
+    <nav class="nav-links">
+      <a href="#features">能力</a>
+      <a href="#start">开始</a>
+      <a href="#shots">界面</a>
+      <a href="使用说明.md">使用说明</a>
+      <a href="https://github.com/kele551/health-db-skill">GitHub ↗</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <h1>把健康数据收进<br>一个属于你自己的文件</h1>
+    <p>手机截图、化验单、处方、手环导出，统统落进一个 SQLite 文件；再看板、周报、FHIR 导出。全程本地运行，不联网、不上传、不需要账号。</p>
+    <div class="cta">
+      <a class="btn btn-dark" href="https://github.com/kele551/health-db-skill">获取代码</a>
+      <a class="btn btn-line" href="#start">三分钟开始</a>
+    </div>
+    <div class="meta">MIT 许可　·　Python 标准库　·　Windows / macOS / Linux</div>
+  </div>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <h2>它解决什么</h2>
+    <p class="lead">散在各处的数据，收成自己的一份；需要的时候，一页纸给医生看。</p>
+    <div class="grid g3">
+      <div class="card"><span class="num">01</span><h3>一人一库，天然隔离</h3><p>一个 .db 一个人，姓名只写进 meta；换人换库，代码同一套，不存在“混在一起”。</p></div>
+      <div class="card"><span class="num">02</span><h3>四种录入，认不准就停</h3><p>一句话、手机截图、化验单、处方/检查单。识别不出的字段留空或进「待确认」，不猜不编。</p></div>
+      <div class="card"><span class="num">03</span><h3>规则提示，不做诊断</h3><p>按参考区间与个人目标标出越界项，只说「需留意」；诊断与用药以主诊医生为准。</p></div>
+      <div class="card"><span class="num">04</span><h3>两个页面，断网可看</h3><p>系统分组看板 + 一周周报，单文件 HTML，内嵌 CSS/SVG，无 CDN、无统计脚本。</p></div>
+      <div class="card"><span class="num">05</span><h3>接得上开源医疗项目</h3><p>FHIR R4 六类资源：Patient、Observation、Condition、MedicationStatement、DiagnosticReport、Encounter。</p></div>
+      <div class="card"><span class="num">06</span><h3>也能当 Agent 技能</h3><p>自带 SKILL.md 与四份 references，Claude Code、Codex 等支持技能的客户端装上就能用。</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="shots" style="background:var(--bg-2); border-block:1px solid var(--line)">
+  <div class="wrap">
+    <h2>界面</h2>
+    <p class="lead">演示数据全部虚构，仓库里没有任何真人的病历。</p>
+    <div class="shot-row">
+      <div>
+        <a href="images/看板.png"><img class="shot" src="images/看板.png" alt="健康看板：按身体系统分组，标尺显示参考区间"></a>
+        <div class="shot-cap">健康看板 · 系统分组 + 区间标尺 + 「需要跟医生说的」（点击看大图）</div>
+      </div>
+      <div>
+        <a href="images/周报.png"><img class="shot" src="images/周报.png" alt="健康周报：一周达标率与变化"></a>
+        <div class="shot-cap">健康周报 · 达标率、变化、逐条明细（点击看大图）</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap">
+    <h2>三分钟开始</h2>
+    <p class="lead">只需要 Python 3.10+，不装数据库、不配服务。</p>
+<pre><span class="cmt"># 拿到代码</span>
+git clone https://github.com/kele551/health-db-skill.git
+cd health-db-skill
+
+<span class="cmt"># ① 建自己的空库（25 张标准表）</span>
+python tools/健康库.py init data/医疗与运动健康数据库.db "你的名字"
+
+<span class="cmt"># ② 写入指标字典（单位 / 参考区间 / LOINC）</span>
+python tools/指标字典导入.py
+
+<span class="cmt"># ③ 出第一份看板</span>
+python tools/健康档案看板.py --out data/看板.html
+
+<span class="cmt"># 想看演示效果（虚构数据）</span>
+python demo/make_demo.py</pre>
+    <div style="margin-top:28px">
+      <table>
+        <tr><th style="width:44%">你手上是什么</th><th>一条命令</th></tr>
+        <tr><td>一句话 / 语音转写</td><td><code>健康文字录入.py --text "今天早上八点血压128/82，心率76"</code></td></tr>
+        <tr><td>手机截图</td><td><code>健康截图入库.py --file "截图.png" --no-cloud</code></td></tr>
+        <tr><td>化验单 / 检验单</td><td><code>化验单入库.py --file "化验单.png"</code></td></tr>
+        <tr><td>处方 / 检查单 / 缴费单</td><td><code>单据识别.py --file "处方.png"</code></td></tr>
+        <tr><td>新的一类指标</td><td><code>健康指标扩展.py add --category 血氧 --value 96 --unit %</code></td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section style="background:var(--bg-2); border-block:1px solid var(--line)">
+  <div class="wrap">
+    <div class="grid g2">
+      <div>
+        <h2>数据只在你手里</h2>
+        <p class="lead" style="margin-bottom:18px">脚本不埋点、不上传、不请求第三方接口；要不要备份、备份到哪，全由你自己决定。</p>
+        <div>
+          <span class="tag">单文件 SQLite</span><span class="tag">无账号</span><span class="tag">无外部 CDN</span>
+          <span class="tag">无姓名/医院/病案号入库</span><span class="tag">MIT 开源</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>不做什么</h3>
+        <p>不做诊断、不给用药建议、不替你判断要不要停药；不把数据传到任何服务器；不把一个人的库混进另一个人的库。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <div>MIT © 海风（kele551）</div>
+    <div>
+      <a href="https://github.com/kele551/health-db-skill">GitHub</a>　·　<a href="使用说明.md">使用说明</a>　·　<a href="https://github.com/kele551/health-db-skill/issues">反馈</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
