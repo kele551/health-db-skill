@@ -33,6 +33,8 @@
 
 > 演示数据全部虚构。仓库里没有、也不会有任何真人的病历。
 
+**关键词**：个人健康数据库 / 个人健康档案 / 健康数据管理 / 健康看板 / 健康周报 / 运动数据 / 步数 / 睡眠 / 心率 / 血氧 / 穿戴数据 / 华为运动健康导出包 / 化验单识别 / 处方识别 / 单据入库 / 血压血糖体重记录 / FHIR R4 / Agent Skill / Claude Code Skill / SQLite 单文件 / 离线 / 隐私优先 / self-hosted health record / personal health record / health dashboard / health data ingestion / wearable data / FHIR export
+
 ## 长这样
 
 | 健康看板 | 健康周报 |
@@ -73,6 +75,27 @@ python demo/make_demo.py      # 生成虚构演示库 + 演示看板 + 演示周
 
 - `--dry-run` 只识别不写盘；`单据台账.py check "<日期/流水号/药名>"` 查重，避免同一张单入两遍。
 - OCR 依赖 `onnxruntime`（`pip install onnxruntime`）；装在别的解释器里时用 `HEALTH_OCR_PY` 指过去。
+
+### 运动与穿戴数据
+
+手表的运动/活动数据不用一屏一屏截图，两条通道都行：
+
+```bash
+# ① 华为运动健康导出包（HUAWEI_HEALTH.zip）整包入库：睡眠、心率、血氧、体温、步数、活动热量、锻炼分钟、活动小时
+python tools/华为导出入库.py --zip "<HUAWEI_HEALTH.zip>" --apply
+
+# ② 手机里的活动 / 运动截图（步数、活动热量、锻炼时长、活动小时）
+python tools/健康截图入库.py --file "<截图>" --no-cloud
+```
+
+- 落库口径：睡眠按「间隔 > 30 分钟断开」聚会话、归到醒来那天；步数 / 活动热量 / 锻炼分钟取每日目标达成记录；静息心率取当日最低；血氧取当日均值；活动小时按 `isActive` 的小时数计。
+- 数据去向：每日活动量进 `daily`（步数、睡眠、静息心率、活动热量、中高强度、活动小时、距离）；原始明细进 `wearable_daily`（类型、指标、均值/极值、首次/末次时间）；单次运动进 `exercise`（日期、项目、分钟、千卡）。
+- 专门的运动/穿戴页面：
+
+```bash
+python tools/穿戴数据看板.py --out data/穿戴看板.html   # 睡眠 / 心率 / 血氧 / 压力情绪 / 活动 / 体重 六件事
+python tools/华为数据总览.py --out data/数据总览.html   # 总量、分类明细、指标清单
+```
 
 ## 页面与导出
 

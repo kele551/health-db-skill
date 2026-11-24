@@ -104,7 +104,7 @@
     <p class="lead">散在各处的数据，收成自己的一份；需要的时候，一页纸给医生看。</p>
     <div class="grid g3">
       <div class="card"><span class="num">01</span><h3>一人一库，天然隔离</h3><p>一个 .db 一个人，姓名只写进 meta；换人换库，代码同一套，不存在“混在一起”。</p></div>
-      <div class="card"><span class="num">02</span><h3>四种录入，认不准就停</h3><p>一句话、手机截图、化验单、处方/检查单。识别不出的字段留空或进「待确认」，不猜不编。</p></div>
+      <div class="card"><span class="num">02</span><h3>五种录入，含手表整包</h3><p>一句话、手机截图、化验单、处方/检查单，再加华为运动健康导出包整包入库（睡眠、心率、血氧、步数、活动热量、锻炼分钟）。认不准就停「待确认」，不猜不编。</p></div>
       <div class="card"><span class="num">03</span><h3>规则提示，不做诊断</h3><p>按参考区间与个人目标标出越界项，只说「需留意」；诊断与用药以主诊医生为准。</p></div>
       <div class="card"><span class="num">04</span><h3>两个页面，断网可看</h3><p>系统分组看板 + 一周周报，单文件 HTML，内嵌 CSS/SVG，无 CDN、无统计脚本。</p></div>
       <div class="card"><span class="num">05</span><h3>接得上开源医疗项目</h3><p>FHIR R4 六类资源：Patient、Observation、Condition、MedicationStatement、DiagnosticReport、Encounter。</p></div>
@@ -156,6 +156,7 @@ python demo/make_demo.py</pre>
         <tr><td>手机截图</td><td><code>健康截图入库.py --file "截图.png" --no-cloud</code></td></tr>
         <tr><td>化验单 / 检验单</td><td><code>化验单入库.py --file "化验单.png"</code></td></tr>
         <tr><td>处方 / 检查单 / 缴费单</td><td><code>单据识别.py --file "处方.png"</code></td></tr>
+        <tr><td>手表运动健康导出包</td><td><code>华为导出入库.py --zip "HUAWEI_HEALTH.zip" --apply</code></td></tr>
         <tr><td>新的一类指标</td><td><code>健康指标扩展.py add --category 血氧 --value 96 --unit %</code></td></tr>
       </table>
     </div>

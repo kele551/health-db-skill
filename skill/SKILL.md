@@ -57,6 +57,14 @@ python tools/健康档案看板.py --out data/看板.html
 - 截图入库用的 OCR 需要 `onnxruntime`（`pip install onnxruntime`）；装在别的解释器里时，用环境变量 `HEALTH_OCR_PY` 指过去。
 - 一类资料一类表：新指标用 `python tools/健康指标扩展.py add --category 血氧 --value 96 --unit % --ref "95–100"`，看板会自动多出一行与时间线。
 
+### 3.1 运动与穿戴数据
+
+- 手表整包：`python tools/华为导出入库.py --zip "<HUAWEI_HEALTH.zip>" --apply` → `daily`（睡眠/静息心率/平均心率/血氧/体温/步数/活动热量/锻炼分钟/活动小时）+ `wearable_daily`（原始明细）；解压目录用 `--dir`。
+- 截图也行：活动/运动页截图走 `健康截图入库.py`，逐项解析活动热量、锻炼时长、活动小时。
+- 口径写死：睡眠「间隔 > 30 分钟断开」聚会话、归醒来那天、午睡不计；静息心率取当日最低；血氧取当日均值；步数/热量/锻炼分钟取每日目标达成记录；活动小时按 `isActive` 计。
+- 单次运动进 `exercise` 表（`date, kind, minutes, kcal, note`）。
+- 专门页面：`穿戴数据看板.py`（睡眠/心率/血氧/压力/活动/体重 六件事）、`华为数据总览.py`（总量与分类明细）。
+
 ## 4. 看板与周报
 
 ```bash
