@@ -7,7 +7,7 @@
 
 用法：
     python 医院报告截图入库.py --file "D:\\截图\\血常规.png" --dry-run
-    python 医院报告截图入库.py --dir "F:\\Harness\\projects\\健康数据\\收件箱"
+    python 医院报告截图入库.py --dir "<工作区>/projects/健康数据\\收件箱"
     python 医院报告截图入库.py --file x.png --date 2026-11-03
 
 口径（与整套健康库一致，不可改）：
