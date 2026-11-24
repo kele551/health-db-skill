@@ -1,23 +1,36 @@
 <div align="center">
+<img src="docs/icon.png" alt="health-db 个人健康数据库" height="120" width="120">
 
 <h1>health-db · 个人健康数据库技能</h1>
 
 <p>把散落在手机截图、化验单、处方里的健康数据，收进一个属于你自己的 SQLite 文件，<br>再变成能给医生看的离线看板与周报。数据不出本机。</p>
 
+<a href="https://github.com/kele551/health-db-skill/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/kele551/health-db-skill/total?style=flat-square&label=downloads&color=blue" height="30"></a>
+<a href="https://github.com/kele551/health-db-skill"><img alt="浏览量" src="https://hits.sh/github.com/kele551/health-db-skill.svg?label=%E6%B5%8F%E8%A7%88%E9%87%8F&color=2563eb&style=flat-square" height="30"></a>
+
 <a href="https://github.com/kele551/health-db-skill/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"></a>
-<img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python&logoColor=white">
-<img alt="SQLite" src="https://img.shields.io/badge/storage-SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white">
-<img alt="FHIR" src="https://img.shields.io/badge/export-FHIR%20R4-e11d48?style=flat-square">
 <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square">
-<img alt="Offline" src="https://img.shields.io/badge/network-离线运行-brightgreen?style=flat-square">
-
-<a href="https://github.com/kele551/health-db-skill/stargazers"><img alt="Star" src="https://img.shields.io/github/stars/kele551/health-db-skill?style=flat-square&logo=github&label=Star&color=gold"></a>
-<a href="https://github.com/kele551/health-db-skill/network/members"><img alt="Fork" src="https://img.shields.io/github/forks/kele551/health-db-skill?style=flat-square&label=Fork&color=blue"></a>
+<img alt="Version" src="https://img.shields.io/badge/%E7%89%88%E6%9C%AC-v1.0-blue?style=flat-square&labelColor=3d4552">
 <img alt="Last Commit" src="https://img.shields.io/github/last-commit/kele551/health-db-skill?style=flat-square&label=last%20commit&color=blue">
-<a href="https://github.com/kele551/health-db-skill/issues"><img alt="Issues" src="https://img.shields.io/badge/%F0%9F%90%9E_反馈-提Issue-0969da?style=flat-square&labelColor=3d4552"></a>
 
-<p>🏠 主页：<a href="https://kele551.github.io/health-db-skill/">kele551.github.io/health-db-skill</a></p>
+<a href="https://github.com/kele551/health-db-skill/stargazers"><img alt="GitHub Star" src="https://img.shields.io/github/stars/kele551/health-db-skill?style=flat-square&logo=github&label=GitHub%20Star&color=gold"></a>
+<a href="https://github.com/kele551/health-db-skill/network/members"><img alt="GitHub Fork" src="https://img.shields.io/github/forks/kele551/health-db-skill?style=flat-square&label=GitHub%20Fork&color=blue"></a>
+<a href="https://github.com/kele551"><img alt="Follow Author" src="https://img.shields.io/github/followers/kele551?style=flat-square&logo=github&label=follow%20author&color=blue"></a>
 
+<img alt="Category" src="https://img.shields.io/badge/%E5%88%86%E7%B1%BB-%E5%81%A5%E5%BA%B7%E6%95%B0%E6%8D%AE-blue?style=flat-square&labelColor=3d4552">
+<img alt="Form" src="https://img.shields.io/badge/%E5%BD%A2%E6%80%81-%E5%BC%80%E6%BA%90%E6%8A%80%E8%83%BD%E5%8C%85-blue?style=flat-square&labelColor=3d4552">
+<img alt="Free" src="https://img.shields.io/badge/%E8%B4%B9%E7%94%A8-%E5%85%8D%E8%B4%B9%E6%97%A0%E5%B9%BF%E5%91%8A-brightgreen?style=flat-square&labelColor=3d4552">
+<img alt="No Tracking" src="https://img.shields.io/badge/%E7%94%A8%E6%88%B7%E6%95%B0%E6%8D%AE-%E4%B8%8D%E9%87%87%E9%9B%86%E4%B8%8D%E4%B8%8A%E4%BC%A0-green?style=flat-square&labelColor=3d4552">
+
+<a href="https://github.com/kele551/health-db-skill/releases"><img alt="Download from GitHub" src="https://img.shields.io/badge/%F0%9F%93%A5%20%E4%B8%8B%E8%BD%BD-GitHub%E5%8F%91%E8%A1%8C-c71d24?style=flat-square&labelColor=3d4552&logo=github&logoColor=white"></a>
+<a href="https://github.com/kele551/health-db-skill"><img alt="GitHub source" src="https://img.shields.io/badge/%F0%9F%90%99%20%E6%BA%90%E7%A0%81-GitHub%E4%B8%BB%E6%BA%90-24292f?style=flat-square&labelColor=3d4552&logo=github&logoColor=white"></a>
+<a href="https://kele551.github.io/health-db-skill/"><img alt="Live demo" src="https://img.shields.io/badge/%F0%9F%93%BA%20%E6%BC%94%E7%A4%BA-%E5%9C%A8%E7%BA%BF%E4%B8%BB%E9%A1%B5-00a1d6?style=flat-square&labelColor=3d4552"></a>
+<a href="https://github.com/kele551/health-db-skill/issues"><img alt="Issues" src="https://img.shields.io/badge/%F0%9F%90%9E%20%E5%8F%8D%E9%A6%88-%E6%8F%90Issue-0969da?style=flat-square&labelColor=3d4552"></a>
+<a href="#支持项目"><img alt="Sponsor" src="https://img.shields.io/badge/%E2%98%95%20%E8%B5%9E%E8%B5%8F-%E8%AF%B7%E5%96%9D%E5%92%96%E5%95%A1-ff69b4?style=flat-square&labelColor=3d4552"></a>
+
+<p>🏥 <b>个人健康数据库技能</b>　·　截图 / 化验单 / 一句话入库，看板与周报离线可看</p>
+
+<p>作者 <b>海风（kele551）</b>　·　<a href="https://github.com/kele551/health-db-skill">GitHub（主）</a>　·　<a href="https://gitcode.com/kele551/health-db-skill">GitCode（镜像）</a>　·　<a href="https://kele551.github.io/health-db-skill/">在线主页</a></p>
 </div>
 
 ## 这是什么
@@ -148,6 +161,14 @@ docs/       使用说明、主页、截图
 
 **Q：为什么不内置就诊摘要？**
 摘要版式与病种强相关，天然个性化。这个仓库给的是数据层、看板与周报；摘要按 `references/看板规范.md` 的口径自建模板即可。
+
+## 支持项目
+
+如果这套工具帮你省了整理化验单的时间，可以请我喝杯咖啡（微信扫码，金额随意，不影响任何功能）：
+
+<p align="center"><img src="docs/qr-sponsor.png" alt="海风的微信赞赏码" width="240"></p>
+
+也欢迎点个 star、提 Issue，或者把它推荐给需要长期记录指标的人。
 
 ## 许可
 
