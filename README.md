@@ -3,6 +3,8 @@
 
 <h1>health-db · 个人健康数据库技能</h1>
 
+  <p>🔗 我的其他工具：<a href="https://kele551-apps.pages.dev/">工具合集</a> · <a href="https://github.com/kele551">作者主页</a></p>
+
 <p>把散落在手机截图、化验单、处方里的健康数据，收进一个属于你自己的 SQLite 文件，<br>再变成能给医生看的离线看板与周报。数据不出本机。</p>
 
 <a href="https://github.com/kele551/health-db-skill/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/kele551/health-db-skill/total?style=flat-square&label=downloads&color=blue" height="30"></a>
