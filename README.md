@@ -172,6 +172,12 @@ docs/       使用说明、主页、截图
 
 也欢迎点个 star、提 Issue，或者把它推荐给需要长期记录指标的人。
 
+## 检索关键词 / Search keywords
+
+**中文**：健康档案、体检报告管理、血压血糖记录、化验单识别、体检报告入库、运动数据、步数睡眠、体重记录、健康看板、周报、SQLite 本地库、FHIR
+
+**English**: personal health record, health database, lab report, lab results, blood pressure, blood glucose, health dashboard, health tracker, wearable data, SQLite, FHIR R4, local-first, offline
+
 ## 许可
 
 MIT © 海风（kele551）
