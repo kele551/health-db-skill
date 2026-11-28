@@ -88,6 +88,8 @@ python tools/timeline_server.py --dir data          # 同 WiFi 手机只读访�
 - `--pdf-mobile` 出 390px 窄纸 PDF（需本机 Microsoft Edge）；手机转发医生优先用 PDF（微信对本地 HTML 打开有限制）。
 - `timeline_server.py` 是纯标准库局域网只读服务：白名单路由（`/`、`/pdf`），无目录列表、不按 URL 拼路径、不写盘，默认绑定 `0.0.0.0:8910`（被占自动顺延），关窗即停；仅限可信局域网，不做公网映射。
 
+**统一时间线数据层（v1.1.1）**：`健康库.py` 内置只读时间线层，`python tools/健康库.py timeline --db <库>` 列出标准化事件，加 `--points` 聚合成时间节点（`--no-daily` / `--no-plan` 可过滤日常测量与随访计划）；库内 `timeline_events(db=...)` 出事件、`timeline_points(events=...)` 出聚合节点，供 `timeline_report.py` 等脚本复用，全程不写库。受控删除口 `delete_rows(table, ids)` 只放行白名单内的结构化表（默认先备份、SQL 参数化、返回被删行与缺失 id），仅适用于有 `id` 主键的表；血压血糖、体重等日常测量表用业务键、不在删除白名单内，删除是写操作，调用前必须先备份并核对 id。
+
 ## 5. 导出 FHIR
 
 ```bash

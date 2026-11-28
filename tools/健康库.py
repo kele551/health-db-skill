@@ -964,6 +964,61 @@ def append(table: str, row: dict) -> int:
         con.close()
 
 
+_DELETABLE_TABLES = frozenset({
+    "lab", "visit", "imaging", "pathology", "condition", "medication",
+    "care_team", "care_plan", "bp_glu", "daily", "weight", "symptom",
+    "ext_metric", "doc", "tcm_fee", "tcm_prescription", "med_change",
+    "exercise", "mood_score", "supply",
+})
+
+
+def delete_rows(table: str, ids: list, reason: str = "", backup: bool = True) -> dict:
+    """受控按主键 id 删除行（唯一合规删除口，禁止在业务脚本里裸 DELETE）。
+
+    - 仅允许 _DELETABLE_TABLES 白名单表；表名经 _ident 校验，id 全部参数化。
+    - 默认先整库备份到 日志\\，再在一个事务里删除；返回删除数、备份路径、被删行摘要与缺失 id。
+    - reason 只进返回的审计摘要，不写库（避免污染 meta）。
+    - 幂等：已不存在的 id 计入 missing，不报错、不影响其余行。
+    """
+    if table not in _DELETABLE_TABLES:
+        raise ValueError(f"delete_rows 不允许删除表：{table}（不在白名单）")
+    t = _ident(table)
+    if not ids:
+        return {"deleted": 0, "backup": None, "rows": [], "missing": [], "reason": reason}
+    int_ids = []
+    for x in ids:
+        try:
+            int_ids.append(int(x))
+        except (TypeError, ValueError):
+            raise ValueError(f"非法 id：{x!r}")
+    seen, uniq = set(), []
+    for i in int_ids:
+        if i not in seen:
+            seen.add(i)
+            uniq.append(i)
+    # 备份标签必须用裸表名 table（已过白名单）；t 是 _ident 的 SQL 转义名（带双引号），
+    # 拼进 Windows 文件名会因非法字符 " 触发 WinError 123（2026-11-28 修）。
+    bk = backup_db(f"删除前-{table}") if backup else None
+    con = connect()
+    try:
+        ph = ",".join("?" * len(uniq))
+        rows = [dict(r) for r in con.execute(
+            f"SELECT * FROM {t} WHERE id IN ({ph})", uniq).fetchall()]
+        found = {r["id"] for r in rows}
+        missing = [i for i in uniq if i not in found]
+        con.execute("BEGIN")
+        cur = con.execute(f"DELETE FROM {t} WHERE id IN ({ph})", uniq)
+        deleted = cur.rowcount
+        con.commit()
+        return {"deleted": deleted, "backup": bk, "rows": rows,
+                "missing": missing, "reason": reason}
+    except Exception:
+        con.rollback()
+        raise
+    finally:
+        con.close()
+
+
 def _agg_rule(type_name: str, metric: str) -> str:
     """决定这条指标用 sum / min / avg 作为当日代表值（与压明细时同口径）。"""
     t, m = (type_name or ""), (metric or "")
@@ -1074,6 +1129,449 @@ def select(table: str, where: str = "", order: str = "", limit: int = 0) -> list
     return _rows(sql)
 
 
+_TL_TRACK_ZONE = {
+    "surgery": "surg", "pathology": "dx", "imaging": "check", "lab": "check",
+    "med_west": "med", "med_tcm": "med", "diagnosis": "dx", "plan": "plan", "daily": "daily",
+}
+
+
+def _tl_date(s):
+    """把库内日期归一为 YYYY-MM-DD；兼容 YYYY-MM / YYYY / 带时间戳；无法解析返回 ''。"""
+    import re as _re
+    s = str(s or "").strip().replace("T", " ")[:10]
+    if len(s) >= 10 and s[4] == "-" and s[7] == "-":
+        return s[:10]
+    m = _re.match(r"^(\d{4})-(\d{1,2})", s)
+    if m:
+        return "%04d-%02d-01" % (int(m.group(1)), int(m.group(2)))
+    m = _re.match(r"^(\d{4})", s)
+    if m:
+        return "%04d-01-01" % int(m.group(1))
+    return ""
+
+
+def _tl_rows(table, db=None):
+    """安全只读某表；表不存在/库未初始化时返回 []，不抛异常。db 仅自测临时指向副本。"""
+    global DB_PATH
+    old = DB_PATH
+    if db:
+        DB_PATH = pathlib.Path(db)
+    try:
+        return _rows(f"SELECT * FROM {_ident(table)}")
+    except Exception:
+        return []
+    finally:
+        if db:
+            DB_PATH = old
+
+
+def _tl_profile(db=None):
+    """自测用：临时指向副本读 profile JSON，结束恢复全局 DB_PATH。"""
+    global DB_PATH
+    old = DB_PATH
+    if db:
+        DB_PATH = pathlib.Path(db)
+    try:
+        return profile()
+    finally:
+        if db:
+            DB_PATH = old
+
+
+def timeline_events(db=None, include_daily=True, include_plan=True):
+    """统一时间线事件层（只读）。覆盖诊疗主线（就诊/病理/影像/化验/西药/中药/诊断/随访计划）
+    与日常测量（血压血糖/步数睡眠/体重/症状/心情/运动）。返回标准化事件 dict 列表，字段：
+    date/end/track/zone/title/detail/status/flag/source/sid/extra。
+    事件层保留原始条目（不做参考区间判红、不做 SUMMARY 过滤、不做窗口合并），聚合与展示归 timeline_points/渲染层。
+    db 仅自测用：临时指向某个库文件，结束恢复全局 DB_PATH。"""
+    import collections as _col
+    import re as _re
+    evs = []
+
+    def add(track, date, title, detail="", end="", status="", flag="", source="", sid="", extra=None):
+        evs.append({
+            "date": _tl_date(date), "end": _tl_date(end), "track": track,
+            "zone": _TL_TRACK_ZONE.get(track, "dx"), "title": str(title or ""),
+            "detail": str(detail or ""), "status": str(status or ""), "flag": str(flag or ""),
+            "source": str(source or ""), "sid": str(sid if sid is not None else ""),
+            "extra": extra or {},
+        })
+
+    # 1) 重大就诊节点（手术/治疗/住院/转诊），同日合并
+    keep = ("手术", "治疗", "住院", "转诊")
+    by_date = _col.OrderedDict()
+    for v in _tl_rows("visit", db):
+        kind = v.get("kind") or ""
+        if not any(k in kind for k in keep):
+            continue
+        by_date.setdefault(_tl_date(v.get("date")), []).append(v)
+    for d, vs in by_date.items():
+        titles = [x.get("title") or "" for x in vs]
+        details = [x.get("detail") or "" for x in vs if x.get("detail")]
+        kinds = [x.get("kind") or "" for x in vs]
+        who = " · ".join(x for x in (next((x.get("hospital") for x in vs if x.get("hospital")), ""),
+                                     next((x.get("doctor") for x in vs if x.get("doctor")), "")) if x)
+        title = next((t for t in titles if any(k in t for k in ("根治", "切除", "癌", "甲状腺", "碘-131", "碘131", "治疗", "住院"))),
+                    titles[0] if titles else "就诊")
+        title = _re.sub(r"由.*?推荐.*?主刀为?.*$", "", title).strip() or title
+        detail = "；".join(dict.fromkeys(details))
+        if who:
+            detail = (who + "。" + detail) if detail else who
+        status = "已完成" if any("手术" in k for k in kinds) else ("治疗" if any("治疗" in k for k in kinds) else "住院")
+        add("surgery", d, title, detail, status=status, source="visit",
+            sid=",".join(str(x.get("id")) for x in vs),
+            extra={"visit_ids": [x.get("id") for x in vs], "hospital": who, "kinds": kinds})
+
+    # 2) 病理 / 3) 影像
+    for p in _tl_rows("pathology", db):
+        add("pathology", p.get("date"), (p.get("site") or "病理") + " · " + (p.get("concl") or "")[:60],
+            "报告号 %s；%s %s" % (p.get("no") or "", p.get("concl") or "", p.get("note") or ""),
+            source="pathology", sid=p.get("id"))
+    for im in _tl_rows("imaging", db):
+        add("imaging", im.get("date"), im.get("item"), im.get("concl"), source="imaging", sid=im.get("id"))
+
+    # 4) 化验按报告日聚合（保留全部项目，不做判红/去重）
+    lab_by_date = _col.defaultdict(list)
+    for r in _tl_rows("lab", db):
+        if r.get("date"):
+            lab_by_date[r["date"]].append(r)
+    for d, rows in lab_by_date.items():
+        items = [{"name": x.get("item") or "", "abbr": x.get("abbr") or "", "val": x.get("result") or "",
+                  "unit": x.get("unit") or "", "ref": x.get("ref") or "", "category": x.get("category") or ""} for x in rows]
+        cats = sorted({x.get("category") or "" for x in rows if x.get("category")})
+        add("lab", d, "化验报告 · %s（%d 类 / %d 项）" % (d, len(cats), len(rows)),
+            source="lab", sid=d, extra={"items": items, "categories": cats, "count": len(rows)})
+
+    # 5) 西药：在服快照（无起始日，date 留空，由聚合层挂最新点）
+    for m in _tl_rows("medication", db):
+        if (m.get("status") or "在服") != "在服":
+            continue
+        name = (m.get("name") or "").split(" · ")[0]
+        add("med_west", "", "在服 · " + name,
+            "长期在服（起始日未记录，调量/停用见用药变更与剂量段）；剂量：%s；%s；%s"
+            % (m.get("dose") or "", m.get("time") or "", m.get("why") or ""),
+            status="在服", source="medication", sid=m.get("id"), extra={"snapshot": True})
+
+    # 6) 西药变更
+    for c in _tl_rows("med_change", db):
+        add("med_west", c.get("date"), "%s · %s%s" % (c.get("action") or "变更", (c.get("med") or "").split(" · ")[0],
+                                                      ("（" + c.get("dose") + "）") if c.get("dose") else ""),
+            "原因：%s；%s" % (c.get("reason") or "", c.get("note") or ""),
+            status=c.get("action") or "", flag=("hi" if "停" in (c.get("action") or "") else ""),
+            source="med_change", sid=c.get("id"), extra={"doctor": c.get("doctor") or ""})
+
+    # 7) 优甲乐等剂量段（profile JSON，通用：无 thy_dose 则跳过）
+    try:
+        prof = profile() if not db else _tl_profile(db)
+    except Exception:
+        prof = {}
+    thy = sorted((prof.get("thy_dose") or {}).get("periods") or [], key=lambda x: x.get("from") or "")
+    for i, p in enumerate(thy):
+        end = thy[i + 1]["from"] if i + 1 < len(thy) else ""
+        add("med_west", p.get("from"), "剂量段 · " + str(p.get("dose") or ""),
+            ("回推（门诊病历未核）" if p.get("inferred") else "本人确认/药盒核实") + "；" + (p.get("evidence") or ""),
+            end=end, status="剂量段", source="profile.thy_dose", sid=p.get("from"), extra={"inferred": bool(p.get("inferred"))})
+
+    # 8) 中药按方次聚合（保留每味药，供菜单/明细）
+    tcm_by_seq = _col.OrderedDict()
+    for t in _tl_rows("tcm_prescription", db):
+        tcm_by_seq.setdefault(t.get("seq"), []).append(t)
+    for seq, rs in tcm_by_seq.items():
+        r0 = rs[0]
+        herbs = [{"name": x.get("herb") or "", "per_g": x.get("per_pack_g"), "total_g": x.get("total_g"),
+                  "jicai": str(x.get("jicai") or "").lower() == "true"} for x in rs]
+        add("med_tcm", r0.get("date"), "第 %s 方 · %s（%s）" % (seq, r0.get("doctor") or "", r0.get("hospital") or ""),
+            "付数 %s；药味 %d 味" % (r0.get("packs") or "", len(rs)),
+            status="已开方", source="tcm_prescription", sid=seq,
+            extra={"doctor": r0.get("doctor") or "", "hospital": r0.get("hospital") or "",
+                   "packs": r0.get("packs"), "herb_count": len(rs), "amount": r0.get("amount"),
+                   "acct": r0.get("acct"), "fund": r0.get("fund"), "cash": r0.get("cash"),
+                   "paid": r0.get("paid"), "note": r0.get("note") or "", "herbs": herbs})
+
+    # 9) 诊断/慢性病史
+    for c in _tl_rows("condition", db):
+        add("diagnosis", c.get("date"), c.get("name"), c.get("note"), status=c.get("tag") or "",
+            source="condition", sid=c.get("id"))
+
+    # 10) 随访计划
+    if include_plan:
+        for p in _tl_rows("care_plan", db):
+            add("plan", p.get("due_date"), p.get("item"),
+                "%s · %s；依据：%s；备注：%s" % (p.get("dept") or "", p.get("doctor") or "", p.get("basis") or "", p.get("note") or ""),
+                end=p.get("window_end"), status=p.get("status") or "待确认", source="care_plan", sid=p.get("id"))
+
+    # 11) 日常测量（按日聚合；周聚合留给渲染层）
+    if include_daily:
+        bp_by_day = _col.defaultdict(list)
+        for r in _tl_rows("bp_glu", db):
+            if r.get("date"):
+                bp_by_day[r["date"]].append(r)
+        for d, rs in bp_by_day.items():
+            last = rs[-1]
+            parts = []
+            if last.get("sbp") is not None and last.get("dbp") is not None:
+                parts.append("血压 %s/%s" % (last["sbp"], last["dbp"]))
+            if last.get("glu") is not None:
+                parts.append("血糖 %s%s" % (last["glu"], ("（" + last["glu_time"] + "）") if last.get("glu_time") else ""))
+            add("daily", d, "血压血糖 · " + d, "；".join(parts), source="bp_glu", sid=d,
+                extra={"records": [{"sbp": x.get("sbp"), "dbp": x.get("dbp"), "hr": x.get("hr"),
+                                    "glu": x.get("glu"), "glu_time": x.get("glu_time")} for x in rs]})
+        for r in _tl_rows("daily", db):
+            d = r.get("date")
+            if not d:
+                continue
+            fields = {"steps": r.get("steps"), "sleep_min": r.get("sleep_min"), "spo2": r.get("spo2"),
+                      "temp": r.get("temp"), "water_ml": r.get("water_ml"), "rhr": r.get("rhr"),
+                      "avg_hr": r.get("avg_hr"), "active_kcal": r.get("active_kcal"),
+                      "exercise_min": r.get("exercise_min"), "distance_km": r.get("distance_km")}
+            add("daily", d, "日常监测 · " + d, source="daily", sid=d, extra=fields)
+        for r in _tl_rows("weight", db):
+            add("daily", r.get("date"), "体重 %s kg" % (r.get("weight") if r.get("weight") is not None else ""),
+                "BMI %s；体脂 %s；肌肉 %s" % (r.get("bmi"), r.get("fat"), r.get("muscle")),
+                source="weight", sid=r.get("date"),
+                extra={"weight": r.get("weight"), "bmi": r.get("bmi"), "fat": r.get("fat"),
+                       "muscle": r.get("muscle"), "waist_cm": r.get("waist_cm")})
+        sym_by_day = _col.defaultdict(list)
+        for r in _tl_rows("symptom", db):
+            if r.get("date"):
+                sym_by_day[r["date"]].append(r)
+        for d, rs in sym_by_day.items():
+            parts = []
+            for r in rs:
+                for k, c in [("睡眠", "sleep"), ("大便", "stool"), ("小便", "urine"), ("舌苔", "tongue"),
+                             ("口干口苦", "dry_mouth"), ("乏力", "fatigue"), ("食欲", "appetite"),
+                             ("出汗", "sweat"), ("怕冷怕热", "temp_feel"), ("夜尿", "nocturia")]:
+                    v = str(r.get(c) or "").strip()
+                    if v:
+                        parts.append("%s:%s" % (k, v))
+                if r.get("other"):
+                    parts.append("其他:" + str(r["other"]))
+            if parts:
+                add("daily", d, "症状 · " + d, "；".join(parts), source="symptom", sid=d)
+        for r in _tl_rows("mood_score", db):
+            add("daily", r.get("date"), "心情 %s / 疲劳 %s" % (r.get("mood"), r.get("fatigue")),
+                r.get("note") or "", source="mood_score", sid=r.get("date"),
+                extra={"mood": r.get("mood"), "fatigue": r.get("fatigue")})
+        ex_by_day = _col.OrderedDict()
+        for r in _tl_rows("exercise", db):
+            d = r.get("date")
+            if not d:
+                continue
+            b = ex_by_day.setdefault(d, {"mins": 0, "types": []})
+            try:
+                b["mins"] += int(r.get("minutes") or 0)
+            except (TypeError, ValueError):
+                pass
+            if r.get("kind"):
+                b["types"].append(str(r["kind"]))
+        for d, b in ex_by_day.items():
+            add("daily", d, "运动 · " + d, "时长 %s 分钟；类型 %s" % (b["mins"], "、".join(dict.fromkeys(b["types"]))),
+                source="exercise", sid=d, extra={"minutes": b["mins"], "types": b["types"]})
+
+    evs.sort(key=lambda e: (e["date"] or "9999-12-31", e["source"], e["sid"]))
+    return evs
+
+
+def timeline_points(events=None, db=None, w_surg_check=14, w_surg_dx=45, w_check=7, w_med=7, w_tcm=30, w_dx=45, daily_weekly=True):
+    """把 timeline_events() 的事件按时间窗口聚合成时间点（只读、纯函数）。
+    通用规则（与渲染层解耦）：手术为锚点；病理/影像/化验 ±14 挂手术、其余按 ±7 贪心成复查点；
+    西药变更/剂量 ±14 挂手术或 ±7 挂复查点；中药方 ±30 挂最近检查/手术点（每点只挂最近一方）；
+    诊断 ±45 附着；在服快照挂最新用药/检查点；随访计划与日常监测独立成点。
+    返回 [{anchor,main,min,max,kind,zones,evs:[event,...]}]，按 anchor 从早到晚。"""
+    import datetime as _dt
+    if events is None:
+        events = timeline_events(db=db)
+    if not events:
+        return []
+
+    def days(a, b):
+        try:
+            return (_dt.date.fromisoformat(a) - _dt.date.fromisoformat(b)).days
+        except Exception:
+            return 10 ** 9
+
+    pts = []
+
+    def mk(ev, main=None):
+        return {"anchor": main or ev.get("date") or None, "main": main or ev.get("date") or None,
+                "min": ev.get("date") or None, "max": ev.get("date") or None, "evs": [ev],
+                "zones": {ev.get("zone")}}
+
+    def put(p, ev):
+        p["evs"].append(ev)
+        p["zones"].add(ev.get("zone"))
+        if ev.get("date"):
+            p["min"] = min(x for x in [p["min"], ev["date"]] if x)
+            p["max"] = max(x for x in [p["max"], ev["date"]] if x)
+            if p.get("main") is None:
+                p["anchor"] = max(x for x in [p["anchor"], ev["date"]] if x)
+
+    surgery = [e for e in events if e["track"] == "surgery"]
+    patho = [e for e in events if e["track"] == "pathology"]
+    check = [e for e in events if e["track"] in ("lab", "imaging")]
+    med_w = [e for e in events if e["track"] == "med_west" and e.get("source") in ("med_change", "profile.thy_dose")]
+    snap = [e for e in events if e.get("source") == "medication"]
+    tcm_f = [e for e in events if e.get("source") == "tcm_prescription"]
+    dx = [e for e in events if e["track"] == "diagnosis"]
+    plan = [e for e in events if e["track"] == "plan"]
+    daily = [e for e in events if e["track"] == "daily"]
+
+    surg_pts = []
+    for e in surgery:
+        p = mk(e, main=e["date"])
+        surg_pts.append(p)
+        pts.append(p)
+
+    def nearest_surg(e, win):
+        if not e.get("date"):
+            return None
+        best, bp = 10 ** 9, None
+        for p in surg_pts:
+            dd = abs(days(e["date"], p["main"]))
+            if dd <= win and dd < best:
+                best, bp = dd, p
+        return bp
+
+    rest_path, rest_check, rest_med, rest_dx = [], [], [], []
+    for e in patho:
+        t = nearest_surg(e, w_surg_check)
+        (put(t, e) if t else rest_path.append(e))
+    for e in check:
+        t = nearest_surg(e, w_surg_check)
+        (put(t, e) if t else rest_check.append(e))
+    for e in med_w:
+        t = nearest_surg(e, w_surg_check)
+        (put(t, e) if t else rest_med.append(e))
+    for e in dx:
+        t = nearest_surg(e, w_surg_dx)
+        (put(t, e) if t else rest_dx.append(e))
+
+    check_pts = []
+    for e in sorted(rest_check + rest_path, key=lambda x: x.get("date") or "9999"):
+        if not e.get("date"):
+            check_pts.append(mk(e))
+            continue
+        if check_pts and check_pts[-1]["max"] and 0 <= days(e["date"], check_pts[-1]["max"]) <= w_check:
+            put(check_pts[-1], e)
+        else:
+            check_pts.append(mk(e))
+    pts.extend(check_pts)
+
+    med_pts = []
+    for e in sorted(rest_med, key=lambda x: x.get("date") or "9999"):
+        target, best = None, 10 ** 9
+        for p in check_pts:
+            if e.get("date") and p.get("anchor"):
+                dd = abs(days(e["date"], p["anchor"]))
+                if dd <= w_med and dd < best:
+                    best, target = dd, p
+        if target:
+            put(target, e)
+        elif med_pts and e.get("date") and med_pts[-1]["max"] and 0 <= days(e["date"], med_pts[-1]["max"]) <= w_med:
+            put(med_pts[-1], e)
+        else:
+            med_pts.append(mk(e))
+    pts.extend(med_pts)
+
+    # 中药方 ±30 挂最近检查/手术点（每点只挂最近一方）
+    host = [p for p in pts if "check" in p["zones"] or "surg" in p["zones"]]
+    host_by_id = {id(p): p for p in host}
+    assign = {}
+    for e in sorted(tcm_f, key=lambda x: x.get("date") or "9999"):
+        if not e.get("date"):
+            continue
+        target, best = None, 10 ** 9
+        for p in host:
+            ref = p.get("main") or p.get("anchor")
+            if ref:
+                dd = abs(days(e["date"], ref))
+                if dd <= w_tcm and dd < best:
+                    best, target = dd, p
+        if target:
+            pid = id(target)
+            if pid not in assign or best < assign[pid][0]:
+                assign[pid] = (best, e)
+    for pid, (_, e) in assign.items():
+        host_by_id[pid]["evs"].append(e)
+        host_by_id[pid]["zones"].add("med")
+    # 未挂到复查/手术点的中药方按开方日独立成用药点（不丢方）
+    mounted_sids = {e["sid"] for (_, e) in assign.values()}
+    for e in tcm_f:
+        if e.get("date") and e["sid"] not in mounted_sids:
+            pts.append(mk(e, main=e["date"]))
+
+    # 诊断附着
+    for e in rest_dx:
+        target, best = None, 10 ** 9
+        if e.get("date"):
+            for p in pts:
+                if p.get("anchor"):
+                    dd = abs(days(e["date"], p["anchor"]))
+                    if dd <= w_dx and dd < best:
+                        best, target = dd, p
+        if target:
+            put(target, e)
+        else:
+            pts.append(mk(e))
+
+    # 在服快照挂最新用药/检查点
+    occ = [p for p in pts if p.get("anchor") and any(z in ("med", "check") for z in p["zones"])]
+    if snap and occ:
+        latest = max(occ, key=lambda p: p["anchor"])
+        for e in snap:
+            put(latest, e)
+    else:
+        for e in snap:
+            pts.append(mk(e))
+
+    for e in plan:
+        pts.append(mk(e))
+    if daily_weekly:
+        # 日常测量按 ISO 周聚合成一个周点（周内每日事件保留在 evs，渲染层可展开）
+        weeks = {}
+        for e in daily:
+            d = e.get("date")
+            if not d:
+                pts.append(mk(e))
+                continue
+            try:
+                dd = _dt.date.fromisoformat(d)
+                wk = (dd - _dt.timedelta(days=dd.weekday())).isoformat()
+            except Exception:
+                pts.append(mk(e))
+                continue
+            weeks.setdefault(wk, []).append(e)
+        for wk, es in weeks.items():
+            p = mk(es[0], main=wk)
+            p["evs"] = list(es)
+            p["zones"] = {"daily"}
+            ds = [x["date"] for x in es if x.get("date")]
+            if ds:
+                p["min"], p["max"] = min(ds), max(ds)
+            p["anchor"] = wk
+            pts.append(p)
+    else:
+        for e in daily:
+            pts.append(mk(e))
+
+    for p in pts:
+        z = p["zones"]
+        if "surg" in z:
+            p["kind"] = "surg"
+        elif "plan" in z and not (z & {"check", "med", "surg"}):
+            p["kind"] = "plan"
+        elif "daily" in z:
+            p["kind"] = "daily"
+        elif "check" in z:
+            p["kind"] = "check"
+        elif "med" in z:
+            p["kind"] = "med"
+        else:
+            p["kind"] = "dx"
+    pts.sort(key=lambda p: (p.get("anchor") or "9999-12-31"))
+    return pts
+
+
 if __name__ == "__main__":
     import sys as _sys
     args = _sys.argv[1:]
@@ -1096,6 +1594,46 @@ if __name__ == "__main__":
         path = args[1] if len(args) > 1 else None
         who = args[2] if len(args) > 2 else ""
         print("已建库：", init_db(path, who))
+    elif args[0] == "timeline":
+        # 统一只读时间线层：timeline_events 出标准化事件，--points 再聚合成时间点；全程不写库。
+        tl_db = None
+        tl_points = False
+        tl_daily = True
+        tl_plan = True
+        rest = args[1:]
+        i = 0
+        while i < len(rest):
+            a = rest[i]
+            if a == "--db" and i + 1 < len(rest):
+                tl_db = rest[i + 1]
+                i += 2
+                continue
+            if a == "--points":
+                tl_points = True
+                i += 1
+                continue
+            if a == "--no-daily":
+                tl_daily = False
+                i += 1
+                continue
+            if a == "--no-plan":
+                tl_plan = False
+                i += 1
+                continue
+            i += 1
+        evs = timeline_events(db=tl_db, include_daily=tl_daily, include_plan=tl_plan)
+        if tl_points:
+            pts = timeline_points(events=evs, daily_weekly=tl_daily)
+            print(f"时间点 {len(pts)} 个（事件 {len(evs)} 条）")
+            for p in pts:
+                print(f"  {p.get('anchor') or '----'}  [{p.get('kind', '')}]  {len(p.get('evs', []))} 事件")
+        else:
+            print(f"事件 {len(evs)} 条")
+            for e in evs[:200]:
+                print(f"  {e['date'] or '----------'}  {e['track']:<10} {e['title'][:60]}")
+            if len(evs) > 200:
+                print(f"  … 其余 {len(evs) - 200} 条略（加 --points 看聚合）")
     else:
         print("用法：健康库.py [tables | columns <表> | add-column <表> <列> <类型> | "
-              "add-table <表> <列:类型,...> | init <库路径> <姓名>]")
+              "add-table <表> <列:类型,...> | init <库路径> <姓名> | "
+              "timeline [--db <库路径>] [--points] [--no-daily] [--no-plan]]")

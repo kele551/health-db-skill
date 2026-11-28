@@ -12,7 +12,7 @@
 
 <a href="https://github.com/kele551/health-db-skill/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"></a>
 <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square">
-<img alt="Version" src="https://img.shields.io/badge/%E7%89%88%E6%9C%AC-v1.1-blue?style=flat-square&labelColor=3d4552">
+<img alt="Version" src="https://img.shields.io/badge/%E7%89%88%E6%9C%AC-v1.1.1-blue?style=flat-square&labelColor=3d4552">
 <img alt="Last Commit" src="https://img.shields.io/github/last-commit/kele551/health-db-skill?style=flat-square&label=last%20commit&color=blue">
 
 <a href="https://github.com/kele551/health-db-skill/stargazers"><img alt="GitHub Star" src="https://img.shields.io/github/stars/kele551/health-db-skill?style=flat-square&logo=github&label=GitHub%20Star&color=gold"></a>
@@ -136,6 +136,19 @@ python tools/timeline_server.py --html data/病程时间线.html --pdf data/病�
 ```
 
 > 仅在可信局域网内使用，不要做端口映射或公网暴露；在外网查看请把 HTML/PDF 复制到自己的私有网盘，或直接转发 PDF。
+
+### 统一时间线数据层与受控删除
+
+`健康库.py` 内置统一的只读时间线层，脚本与 Agent 可直接复用，不必各自拼 SQL：
+
+```bash
+python tools/健康库.py timeline --db data/xxx.db            # 列出标准化事件（就诊/化验/用药/日常测量…）
+python tools/健康库.py timeline --db data/xxx.db --points  # 再聚合成按时间排列的节点
+```
+
+- 只读不写库；`--no-daily` / `--no-plan` 可过滤日常测量与随访计划。
+- 库内函数 `timeline_events(db=...)` 出事件、`timeline_points(events=...)` 出聚合节点，供 `timeline_report.py` 等脚本调用。
+- 受控删除口 `delete_rows(table, ids)` 仅允许白名单内的结构化表（就诊 / 化验 / 影像 / 病理 / 用药 / 处方 / 随访等 20 张），默认先备份、SQL 参数化、返回被删行与缺失 id；只适用于有 `id` 主键的表，血压血糖、体重等日常测量表用业务键、不在删除白名单内。删除是写操作，调用前务必先备份并核对 id。
 
 ## 作为 Agent 技能安装
 
