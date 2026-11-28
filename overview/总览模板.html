@@ -2,7 +2,7 @@
 <html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="text-scale" content="scale">
-<meta name="description" content="示例用户的个人健康总览：病历、体征、化验、时间线，医疗记录与设备监测分开看。">
+<meta name="description" content="个人健康总览：病历、体征、化验、时间线，医疗记录与设备监测分开看。">
 <meta property="og:title" content="健康总览 · 医疗版">
 <meta property="og:description" content="病历、体征、化验、时间线一页看完，数据来自本机数据库。">
 <meta property="og:type" content="profile">
@@ -208,7 +208,7 @@ a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible,.
   <h2>原始数据 <span class="h">全量入库核对：56 类 / 442 项，一条没丢</span></h2>
   <div class="card"><details class="raw"><summary id="rawsum">展开看导出分类与指标清单</summary>
     <div class="in">
-      <input id="q" placeholder="搜类型或指标，例如 睡眠、血氧、stress">
+      <input id="q" aria-label="搜类型或指标" placeholder="搜类型或指标，例如 睡眠、血氧、stress">
       <div class="sc"><table><thead><tr><th>类型 / 指标</th><th>所属</th><th class="n">行数</th><th>覆盖</th></tr></thead><tbody id="raw"></tbody></table></div>
     </div></details></div>
 </section>
@@ -317,7 +317,7 @@ function grpCard(g){
       ${(r.se||[]).slice().reverse().map(p=>`<tr><td>${esc(p.d)}</td><td class="n">${fmt(p.v)}</td><td class="n" style="color:#6b7480">${esc(r.ref||'')}</td></tr>`).join('')
         || `<tr><td colspan="3" style="color:#6b7480">这类数据只有一次记录</td></tr>`}
       </tbody></table></div>`;
-    return `<div class="row" role="button" tabindex="0" aria-expanded="false" onclick="this.setAttribute('aria-expanded',document.getElementById('${id}').classList.toggle('on'))" onkeydown="if(event.keyCode===13||event.keyCode===32){event.preventDefault();this.click()}">
+    return `<div class="row" role="button" tabindex="0" aria-expanded="false" onclick="this.setAttribute('aria-expanded',document.getElementById('${id}').classList.toggle('on'))" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
       <div class="nm">${esc(r.n)}<i>${r.k.startsWith('@') ? esc(r.u||'') : esc(r.k) + (r.u? ' · '+esc(r.u) : '')}</i></div>
       <div class="val">${esc(r.v)}<small>${esc(r.u||'')}</small></div>
       ${barSvg(r)}

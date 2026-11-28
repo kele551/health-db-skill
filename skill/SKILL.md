@@ -76,6 +76,18 @@ python tools/健康周报.py --out data/周报.html         # 一周一页：达
 - 周报默认取库里最近 7 天；数据没跟上今天时按最后一条数据往回数，不硬凑空日子。
 - 两个页面都是单文件 HTML（内嵌 CSS/SVG，无外链），断网可看，直接发给医生本人。
 
+### 4.1 病程时间线与手机访问
+
+```bash
+python tools/timeline_report.py --db data/xxx.db --out data/病程时间线.html
+python tools/timeline_report.py --db data/xxx.db --pdf-mobile --pdf-out data/病程时间线-手机版.pdf
+python tools/timeline_server.py --dir data          # 同 WiFi 手机只读访问 HTML/PDF
+```
+
+- 时间线只读不写库：就诊 / 病理 / 影像 / 化验 / 用药 / 中药 / 诊断 / 随访计划与日常测量按时间聚合；姓名默认读库 `profile.name` / `HEALTH_NAME`，可用 `--name` 覆盖，不内置任何真实病历。
+- `--pdf-mobile` 出 390px 窄纸 PDF（需本机 Microsoft Edge）；手机转发医生优先用 PDF（微信对本地 HTML 打开有限制）。
+- `timeline_server.py` 是纯标准库局域网只读服务：白名单路由（`/`、`/pdf`），无目录列表、不按 URL 拼路径、不写盘，默认绑定 `0.0.0.0:8910`（被占自动顺延），关窗即停；仅限可信局域网，不做公网映射。
+
 ## 5. 导出 FHIR
 
 ```bash

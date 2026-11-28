@@ -194,47 +194,52 @@ def build(d: dict, end: date):
 PAGE = r"""<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="一周健康汇总：血压血糖达标、体重变化、睡眠步数与静息心率、化验异常与复查提醒，数据来自本机健康数据库。">
 <title>__NAME__ · 健康周报 __W0__ ~ __END__</title>
 <style>
-:root{--bg:#f6f7f9;--card:#fff;--line:#e4e8ec;--ink:#1c2329;--mute:#6b7480;--soft:#98a1ac;
- --ok:#2e7d5b;--okbg:#e9f4ee;--high:#bf5a2c;--highbg:#fbeee7;--low:#2f6ea8;--lowbg:#e9f1f9;
- --na:#7b8494;--na-bg:#eef1f4;--accent:#1f5c50}
+:root{--bg:#f6f7f9;--card:#fff;--line:#e4e8ec;--ink:#1c2329;--mute:#6b7480;--soft:#6b7480;
+ --ok:#2e7d5b;--okbg:#e9f4ee;--high:#b4531f;--highbg:#fbeee7;--low:#2f6ea8;--lowbg:#e9f1f9;
+ --na:#6b7480;--na-bg:#eef1f4;--accent:#1f5c50}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.62 "Noto Sans SC","Noto Sans CJK SC",Manrope,Geist,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1000px;margin:16px auto 30px;padding:0 2px}
-.top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.top h1{margin:0;font-size:23px}
-.top .sub{color:var(--mute);font-size:12.5px}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Noto Sans SC","Noto Sans CJK SC",Manrope,Geist,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1000px;margin:16px auto 32px;padding:0 2px}
+.top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.top h1{margin:0;font-size:24px}
+.top .sub{color:var(--mute);font-size:12px}
 .top .right{margin-left:auto;color:var(--soft);font-size:12px;text-align:right}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:14px 0 0}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:16px 0 0}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
 .kpi .k{font-size:12px;color:var(--mute)}
-.kpi .v{font-size:26px;font-weight:600;line-height:1.25;margin:3px 0 1px;font-variant-numeric:tabular-nums}
-.kpi .v small{font-size:12px;font-weight:400;color:var(--mute);margin-left:3px}
+.kpi .v{font-size:24px;font-weight:600;line-height:1.33;margin:4px 0 2px;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:12px;font-weight:400;color:var(--mute);margin-left:4px}
 .kpi .n{font-size:12px;color:var(--mute)}
 .kpi.ok .v{color:var(--ok)}.kpi.hi .v{color:var(--high)}.kpi.lo .v{color:var(--low)}
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
 @media(max-width:820px){.cols{grid-template-columns:1fr}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .hd{display:flex;align-items:baseline;gap:8px;padding:12px 16px;border-bottom:1px solid #eef1f4}
-.hd b{font-size:13.5px}
+.hd b{font-size:14px}
 .hd span{margin-left:auto;font-size:12px;color:var(--soft)}
-.bd{padding:6px 0}
-.row{display:grid;grid-template-columns:1.1fr .9fr .8fr;gap:8px;padding:8px 16px;border-bottom:1px solid #f3f5f7;font-size:12.5px;align-items:baseline}
+.bd{padding:8px 0}
+.row{display:grid;grid-template-columns:1.1fr .9fr .8fr;gap:8px;padding:8px 16px;border-bottom:1px solid #f3f5f7;font-size:12px;align-items:baseline}
 .row:last-child{border-bottom:0}
 .row .d{color:var(--mute);font-variant-numeric:tabular-nums}
 .row .v{font-weight:600;font-variant-numeric:tabular-nums}
-.badge{display:inline-block;font-size:11px;padding:1px 6px;border-radius:4px;margin-left:4px}
+.badge{display:inline-block;font-size:12px;padding:2px 8px;border-radius:4px;margin-left:4px}
 .badge.ok{background:var(--okbg);color:var(--ok)}.badge.hi{background:var(--highbg);color:var(--high)}
 .badge.lo{background:var(--lowbg);color:var(--low)}.badge.na{background:var(--na-bg);color:var(--na)}
-.bars{display:flex;gap:3px;align-items:flex-end;height:26px;margin-top:4px}
-.bars i{flex:1;background:#d7e5df;border-radius:2px;min-height:3px}
+.bars{display:flex;gap:4px;align-items:flex-end;height:26px;margin-top:4px}
+.bars i{flex:1;background:#d7e5df;border-radius:2px;min-height:4px}
 .bars i.on{background:var(--accent)}
-.sec{margin-top:14px}
-.sec h2{font-size:15px;margin:0 0 8px}
+.sec{margin-top:16px}
+.sec h2{font-size:16px;margin:0 0 8px}
 .note{font-size:12px;color:var(--mute);margin-top:8px}
-.foot{margin-top:16px;font-size:11.5px;color:var(--soft);text-align:center}
-</style></head><body><div class="wrap">
+.foot{margin-top:16px;font-size:12px;color:var(--soft);text-align:center}
+.skip{position:absolute;left:-9999px;top:0;z-index:20;padding:8px 16px;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;text-decoration:none}
+.skip:focus{left:16px}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+</style></head><body><a class="skip" href="#main">跳到主要内容</a><main id="main" class="wrap">
 <div class="top"><h1>__NAME__ · 健康周报</h1><span class="sub">__W0__ ~ __END__</span>
 <span class="right">生成 __GEN__ · 数据只读，不改库</span></div>
 <div class="kpis" id="kpis"></div>
@@ -251,7 +256,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.62 "Noto Sans SC
   <div class="card"><div class="hd"><b>下周要做</b><span>复查提醒</span></div><div class="bd" id="rem"></div></div>
 </div>
 <div class="foot">数据来源：医疗与运动健康数据库 · 本页只做汇总，不是诊断</div>
-</div>
+</main>
 <script>
 const D = __DATA__;
 const el = i => document.getElementById(i);

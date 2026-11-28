@@ -12,7 +12,7 @@
 
 <a href="https://github.com/kele551/health-db-skill/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square"></a>
 <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square">
-<img alt="Version" src="https://img.shields.io/badge/%E7%89%88%E6%9C%AC-v1.0-blue?style=flat-square&labelColor=3d4552">
+<img alt="Version" src="https://img.shields.io/badge/%E7%89%88%E6%9C%AC-v1.1-blue?style=flat-square&labelColor=3d4552">
 <img alt="Last Commit" src="https://img.shields.io/github/last-commit/kele551/health-db-skill?style=flat-square&label=last%20commit&color=blue">
 
 <a href="https://github.com/kele551/health-db-skill/stargazers"><img alt="GitHub Star" src="https://img.shields.io/github/stars/kele551/health-db-skill?style=flat-square&logo=github&label=GitHub%20Star&color=gold"></a>
@@ -118,9 +118,24 @@ python tools/华为数据总览.py --out data/数据总览.html   # 总量、分
 python tools/健康档案看板.py --out data/看板.html     # 系统分组 + 区间标尺 + 三色提示
 python tools/健康周报.py --out data/周报.html        # 一周达标率、变化、待办
 python tools/导出FHIR.py --out data/fhir            # FHIR R4 六类资源
+python tools/timeline_report.py --db data/xxx.db --out data/病程时间线.html  # 病程时间线（单文件 HTML）
+python tools/timeline_report.py --db data/xxx.db --pdf-mobile --pdf-out data/病程时间线-手机版.pdf  # 390px 窄纸 PDF
 ```
 
 页面是纯本地文件：内嵌 CSS 与自写 SVG，没有外部 CDN、没有统计脚本。
+
+### 病程时间线与手机访问
+
+`timeline_report.py` 把就诊、病理、影像、化验、用药、中药、诊断、随访计划与日常测量聚合成一条按时间排列的病程时间线，输出单文件 HTML（无外链、断网可看）；`--pdf-mobile` 另出 390px 窄纸 PDF（需本机 Edge 无头打印），适合手机查看或转发给医生。
+
+手机和电脑连同一个 WiFi 时，可用 `timeline_server.py` 起一个**只读**局域网服务，手机浏览器直接打开 HTML/PDF（不提供目录列表、不按 URL 拼路径、不写盘，关窗即停）：
+
+```bash
+python tools/timeline_server.py --dir data            # 自动发现目录下最新 HTML/PDF，默认 8910 端口
+python tools/timeline_server.py --html data/病程时间线.html --pdf data/病程时间线-手机版.pdf
+```
+
+> 仅在可信局域网内使用，不要做端口映射或公网暴露；在外网查看请把 HTML/PDF 复制到自己的私有网盘，或直接转发 PDF。
 
 ## 作为 Agent 技能安装
 
